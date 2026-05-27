@@ -49,7 +49,7 @@ Definir los parámetros operativos básicos del Mate Point antes de comenzar la 
 
 | Paso | Tarea | Valor / Resultado | Estado |
 |------|-------|-------------------|--------|
-| 0.1 | Definir precio de venta (en ARS) | **$ 500,00 ARS** | **Completado** |
+| 0.1 | Definir precio de venta (en ARS) | **`MP_SALE_AMOUNT=500.00`** (configurable en servidor) | **Completado** |
 | 0.2 | Definir tiempo de dispensado | **120 s (120 000 ms)** | **Completado** |
 | 0.3 | Asignar `device_id` único | **`MATEPOINT001`** | **Completado** |
 | 0.4 | Documentar parámetros en `integracion-mercadopago-qr.md` §10 | — | **Completado** |
@@ -139,10 +139,10 @@ Implementar el servidor backend en **Railway** (Node.js + Express) que recibe la
 | 3.2 | Documentar y configurar MQTT (broker público HiveMQ en `.env` / Railway) | **Completado** |
 | 3.3 | Deploy en Railway: repo conectado, variables de entorno, `GET /health` | **Completado** |
 | 3.4 | `POST /webhook/mp`: recibir IPN, responder 200, log `webhook_received` | **Completado** |
-| 3.4b | Validar `x-signature` con `MP_WEBHOOK_SECRET` | Pendiente |
-| 3.5 | Consultar orden via `GET /v1/orders/{id}` y verificar `processed` / `accredited` (defensivo) | Pendiente |
-| 3.6 | Publicar MQTT `{ cmd: "dispense", duration_ms: 120000 }` en `mate/MATEPOINT001/command` | Pendiente |
-| 3.7 | Log estructurado `dispense_triggered` (orden, monto, `mqtt_published`) | Pendiente |
+| 3.4b | Validar `x-signature` (estrategia C) con `MP_WEBHOOK_SECRET` | **Completado** |
+| 3.5 | Consultar orden via `GET /v1/orders/{id}` y verificar `processed` / `accredited` + `MP_SALE_AMOUNT` | **Completado** |
+| 3.6 | Publicar MQTT `{ cmd: "dispense", duration_ms: 120000 }` en `mate/MATEPOINT001/command` | **Completado** (código; falta prueba e2e) |
+| 3.7 | Log estructurado `dispense_triggered` / `mqtt_published` / `mqtt_failed` | **Completado** |
 | 3.8 | URL webhook registrada en Portal MP (modo prueba) | **Completado** |
 | 3.9 | Prueba e2e: pago → webhook → **MQTT** → log | **Parcial** (webhook OK; MQTT pendiente) |
 | 3.10 | Implementar `POST /orders/create` en el servidor (opcional: reemplazar Postman) | Pendiente |
@@ -151,17 +151,17 @@ Implementar el servidor backend en **Railway** (Node.js + Express) que recibe la
 
 - [x] `GET /health` en Railway responde (servicio desplegado)
 - [x] El backend recibe notificaciones IPN de MP (`order.processed`, HTTP 200)
-- [ ] La validación `x-signature` pasa correctamente
-- [ ] Solo los pagos con `status: "processed"` / `accredited` disparan el MQTT
-- [ ] El mensaje MQTT llega al broker con `device_id` y `duration_ms: 120000`
-- [ ] Existe log JSON `dispense_triggered` por transacción procesada
-- [ ] Flujo completo sandbox: pago → webhook → MQTT → log
+- [x] Validación `x-signature` implementada (estrategia C — no bloquea si falla)
+- [x] Solo órdenes `processed` / `accredited` y monto `MP_SALE_AMOUNT` disparan MQTT
+- [ ] El mensaje MQTT llega al broker (verificar `mqtt_published` tras deploy)
+- [x] Logs `dispense_triggered`, `signature_*`, `order_fetch_*` implementados
+- [ ] Flujo completo sandbox: pago → webhook → MQTT → log (prueba post-deploy)
 
 ### Pendiente para cerrar Fase 3
 
-1. Implementar en `servidor/src/routes/webhook.js`: firma → (opcional) `GET /v1/orders/{id}` → `publishDispense()`.
-2. Confirmar en logs Railway: `mqtt_connected` y `mqtt_published` tras un pago de prueba.
-3. Verificar variables en Railway: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MQTT_BROKER_URL`, `MQTT_DEVICE_ID`, `DISPENSE_DURATION_MS`.
+1. **Deploy** en Railway (push a `Mate-Point-v1`) con variables: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_SALE_AMOUNT`, `MQTT_BROKER_URL`, `MQTT_DEVICE_ID`, `DISPENSE_DURATION_MS`.
+2. Repetir pago sandbox y confirmar en logs: `order_fetch_ok` → `dispense_triggered` → `mqtt_published`.
+3. (Opcional) Verificar en logs si `signature_valid` o `signature_invalid` con QR.
 
 ---
 

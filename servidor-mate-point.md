@@ -184,33 +184,263 @@ Recibir POST
   └─ Responder HTTP 200 en < 22 s (requisito MP)
 ```
 
-### 5.2 Validación del webhook (`x-signature`)
+### 5.2 Especificación — `x-signature` + `GET /v1/orders/{id}` (sin implementar aún)
 
-MP envía en el header `x-signature` la firma HMAC-SHA256 del body usando el **secret** de la app.
+Documento de diseño para cerrar Fase 3. Referencia oficial: [Webhooks — Mercado Pago](https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/webhooks).
 
-```javascript
-const crypto = require('crypto');
+#### A. Estrategia de firma — **adoptada: C (híbrida)**
 
-function validateMpSignature(req) {
-  const signature = req.headers['x-signature'];
-  const secret    = process.env.MP_WEBHOOK_SECRET;
-  if (!signature || !secret) return false;
+La documentación de MP indica que las notificaciones de **Código QR** pueden no ser verificables con la clave secreta. En pruebas del prototipo **sí llegó** `x-signature` con `order.processed`, pero eso no garantiza que el HMAC valide siempre.
 
-  // Formato: "ts=...,v1=<hash>"
-  const [, v1] = signature.split(',').map(p => p.split('='));
-  const ts     = signature.match(/ts=(\d+)/)?.[1];
-  const manifest = `id:${req.body.id};request-id:${req.headers['x-request-id']};ts:${ts};`;
+| Estrategia | Descripción | Decisión |
+|------------|-------------|----------|
+| **A — Firma + GET** | Si firma falla → 401, no dispensar | **No** — arriesga bloquear pagos reales si QR no valida firma |
+| **B — Solo GET** | Ignorar firma por completo | **No** — desaprovecha seguridad cuando la firma sí funciona |
+| **C — Híbrida** | Intentar firma; **siempre** exigir GET; si firma falla, log y continuar solo con GET | **✅ Adoptada** |
 
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(manifest)
-    .digest('hex');
+**Por qué C (recomendación del equipo):**
 
-  return v1[1] === expected;
-}
+1. **A** es demasiado estricta para QR: si MP no firma bien en este producto, el dispensador nunca activaría pese a cobros legítimos.
+2. **B** es simple pero deja de lado una capa gratis cuando la firma sí coincide (tu log ya trae `x-signature`).
+3. **C** intenta la firma (auditoría + defensa ante POST falsos si valida), y el **GET a MP es la puerta obligatoria** para dispensar — alineado con la doc QR y con pagos verificados con el token del vendedor.
+
+**Comportamiento concreto (estrategia C):**
+
+- Firma **válida** → log `signature_valid` → seguir a GET.
+- Firma **inválida** → log `signature_invalid` → **no** devolver 401; seguir a GET igual.
+- GET **OK** + reglas de monto/estado → MQTT.
+- GET **falla** o orden no acreditada → HTTP 200, sin MQTT.
+
+---
+
+#### B. Flujo propuesto en `POST /webhook/mp`
+
+```
+POST /webhook/mp
+│
+├─ 1. Responder rápido: objetivo total < 22 s (requisito MP)
+│
+├─ 2. Extraer datos de la notificación
+│     • Query: data.id, data.external_reference, type
+│     • Headers: x-signature, x-request-id
+│     • Body: action, type, data (JSON)
+│
+├─ 3. Filtro de evento
+│     • Procesar solo si action === "order.processed"
+│     • Cualquier otro action → HTTP 200 + log ignore (no dispensar)
+│
+├─ 4. Validación x-signature (estrategia C)
+│     • Ver §5.2.1 — intentar HMAC; si falla → log, continuar a GET (no 401)
+│
+├─ 5. Resolver order_id
+│     • Preferir query data.id; fallback body.data.id
+│     • Ejemplo real: ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD
+│
+├─ 6. Idempotencia (§5.2.3)
+│     • Si order_id ya fue dispensado → HTTP 200 + log duplicate (no MQTT)
+│
+├─ 7. GET /v1/orders/{order_id}  (§5.2.2)
+│     • Authorization: Bearer MP_ACCESS_TOKEN (sandbox)
+│     • Si HTTP ≠ 200 o timeout → HTTP 200 + log error (no dispensar)
+│
+├─ 8. Validar orden en respuesta GET
+│     • status === "processed"
+│     • status_detail === "accredited"
+│     • config.qr.external_pos_id === MP_EXTERNAL_POS_ID (opcional, recomendado)
+│     • total_paid_amount === total_amount === MP_SALE_AMOUNT (obligatorio, ver §5.2.7)
+│     • Si no cumple → HTTP 200 + log skip (no dispensar)
+│
+├─ 9. Publicar MQTT dispense (§9)
+│     • topic mate/MATEPOINT001/command
+│     • payload: cmd, duration_ms, order_id, external_reference, ts
+│
+├─ 10. Log dispense_triggered + marcar idempotencia
+│
+└─ 11. HTTP 200 { ok: true }
 ```
 
-> El `MP_WEBHOOK_SECRET` se obtiene en: Portal MP Developers → App "Mate point" → Webhooks → Clave secreta.
+> **No usar solo el body del webhook para dispensar.** Aunque traiga `processed/accredited`, el GET confirma contra MP con el token del vendedor y evita spoofing si la firma no aplica en QR.
+
+---
+
+#### 5.2.1 Validación `x-signature` (HMAC-SHA256)
+
+**Variable:** `MP_WEBHOOK_SECRET` — clave del panel → Webhooks → **Clave secreta** (modo prueba; otra clave en modo productivo).
+
+**Header recibido:**
+
+```http
+x-signature: ts=1704908010,v1=618c85345248dd820d5fd456117c2ab2ef8eda45a0282ff693eac24131a5e839
+x-request-id: 5a9906b9-2088-45f4-ab7d-98fd29c9dc83
+```
+
+**Algoritmo (oficial MP):**
+
+1. Parsear `x-signature`: separar por `,`, extraer `ts` y `v1` (hash esperado).
+2. Obtener **`data.id` de los query params** de la URL (no del body). En Express: `req.query['data.id']`.
+3. Si `data.id` es alfanumérico → usar **minúsculas** en el manifest.
+4. Armar el **manifest** (solo incluir partes que existan):
+
+```text
+id:{data.id};request-id:{x-request-id};ts:{ts};
+```
+
+Ejemplo con la prueba real:
+
+```text
+id:ordtst01ksncyh61mngyp5q27g0y5rjd;request-id:5a9906b9-2088-45f4-ab7d-98fd29c9dc83;ts:...;
+```
+
+5. Calcular: `HMAC_SHA256(secret, manifest)` en hex.
+6. Comparar con `v1` del header (comparación segura, timing-safe si es posible).
+
+**Errores frecuentes (evitar):**
+
+| Error | Correcto |
+|-------|----------|
+| Usar `req.body.data.id` para el manifest | Usar **query** `data.id` |
+| No bajar a minúsculas el id alfanumérico | `toLowerCase()` en id para manifest |
+| Usar `req.body.id` (notificación tipo payment legacy) | Para Orders: `data.id` en query |
+
+**Timestamp (opcional, recomendado):**
+
+- Comparar `ts` del header con `Date.now()/1000` (MP documenta `ts` en segundos en ejemplos).
+- Tolerancia sugerida: **± 5 minutos** para descartar replays viejos.
+- Si está fuera de ventana → no dispensar, log `signature_ts_stale`.
+
+**Si falta `MP_WEBHOOK_SECRET` en Railway:**
+
+- No dispensar; log `config_error`; HTTP 500 o 200 según política (ver consulta abajo).
+
+---
+
+#### 5.2.2 `GET /v1/orders/{id}` antes de dispensar
+
+**Request:**
+
+```http
+GET https://api.mercadopago.com/v1/orders/{order_id}
+Authorization: Bearer {MP_ACCESS_TOKEN}
+```
+
+- `{order_id}` = ID tal como lo devuelve la API (ej. `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`) — **mismo casing** que en la respuesta de creación, no necesariamente el del manifest en minúsculas.
+- Token: **credenciales de prueba** mientras `live_mode: false` en el webhook.
+
+**Condiciones para disparar MQTT (todas obligatorias):**
+
+| # | Campo en respuesta GET | Valor esperado |
+|---|------------------------|----------------|
+| 1 | `status` | `processed` |
+| 2 | `status_detail` | `accredited` |
+| 3 | `type` | `qr` |
+| 4 | `config.qr.mode` | `static` |
+| 5 | `config.qr.external_pos_id` | `MATEPOINT001POS001` |
+| 6 | `transactions.payments[0].status` | `processed` (redundante; refuerzo) |
+
+**Validaciones adicionales:**
+
+| Campo | Regla |
+|-------|--------|
+| `total_amount` | Debe ser igual a **`MP_SALE_AMOUNT`** (variable de entorno, ej. `500.00`) |
+| `total_paid_amount` | Igual a `total_amount` |
+| `external_reference` | Prefijo `mate-001-` (opcional) |
+| `user_id` | Coincidir con `MP_USER_ID` (opcional en POC) |
+
+> Al cambiar el precio, el dueño actualiza **`MP_SALE_AMOUNT`** en Railway (y en órdenes creadas vía `POST /orders/create` cuando exista). El ESP32 **no** lleva el monto — solo `duration_ms`. Mínimo MP: **$ 15,00 ARS**.
+
+**Si GET devuelve `created` u otro estado:**
+
+- Webhook llegó antes de que MP terminó de procesar → HTTP **200**, log `order_not_ready`, **no** MQTT.
+- Opcional (fase posterior): reintento interno 1–2 veces con delay 2 s; no obligatorio en POC.
+
+**Correlación webhook ↔ GET:**
+
+| Fuente | order_id | Uso |
+|--------|----------|-----|
+| Query `data.id` | ORDTST… | Firma + GET |
+| Body `data.id` | ORDTST… | Fallback + logs |
+| Body `data.external_reference` | mate-001-… | Log MQTT / trazabilidad |
+
+---
+
+#### 5.2.3 Idempotencia (evitar doble dispensado)
+
+MP puede reenviar el mismo webhook. Sin idempotencia, se publicarían dos MQTT.
+
+**Regla:** antes de MQTT, comprobar si `order_id` ya fue procesado.
+
+| Implementación POC | Descripción |
+|--------------------|-------------|
+| **Memoria (Map)** | `Set` en RAM del proceso — pierde estado si Railway reinicia |
+| **Archivo / Redis** | Mejor para producción; no obligatorio en POC |
+
+**Ventana:** conservar `order_id` procesados al menos **24 h** (o hasta reinicio del dyno en POC).
+
+**Log en duplicado:** `{ event: "dispense_duplicate", order_id }` → HTTP 200.
+
+---
+
+#### 5.2.4 Códigos HTTP de respuesta al webhook
+
+| Situación | HTTP | ¿Dispensar? |
+|-----------|------|-------------|
+| Firma inválida (estrategia A) | **401** | No |
+| Firma inválida (estrategia C) | **200** | Solo si GET OK |
+| `action` ≠ `order.processed` | **200** | No |
+| Orden no lista en GET | **200** | No |
+| Orden validada + MQTT OK | **200** | Sí |
+| Orden validada + MQTT falla | **200** | No — log `mqtt_failed` |
+| Duplicado idempotencia | **200** | No |
+
+**Decisión equipo:** si MQTT falla pero GET OK → **HTTP 200** + log `mqtt_failed` (no reintentar vía MP; reconciliar manual o reintento interno futuro).
+
+---
+
+#### 5.2.5 Logs estructurados esperados
+
+| event | Cuándo |
+|-------|--------|
+| `webhook_received` | Siempre (ya existe) |
+| `signature_valid` / `signature_invalid` | Tras paso 4 |
+| `order_fetch_ok` / `order_fetch_failed` | Tras GET |
+| `order_not_ready` | GET con status ≠ processed |
+| `dispense_triggered` | Antes de MQTT |
+| `mqtt_published` / `mqtt_failed` | Tras MQTT |
+| `dispense_duplicate` | Idempotencia |
+
+---
+
+#### 5.2.6 Checklist de implementación
+
+- [x] Parsear query `data.id` para firma (minúsculas si alfanumérico) — `src/utils/signature.js`
+- [x] Comparar HMAC con `v1` (estrategia **C** — no bloquear si falla)
+- [x] Filtrar `action === "order.processed"` — `src/routes/webhook.js`
+- [x] GET orden con `MP_ACCESS_TOKEN` — `src/services/mercadopago.js`
+- [x] Validar `processed` + `accredited` + POS + `MP_SALE_AMOUNT`
+- [x] Idempotencia por `order_id` — `src/services/idempotency.js`
+- [x] `publishDispense` solo si todo OK
+- [ ] Prueba en Railway: pago sandbox → `mqtt_published` en logs
+
+---
+
+#### 5.2.7 Decisiones del equipo (2026-05-27)
+
+| # | Tema | Decisión |
+|---|------|----------|
+| 1 | Estrategia firma | **C (híbrida)** — ver justificación §5.2.A |
+| 2 | Firma falla, GET OK | **Dispensar** si GET cumple reglas (no bloquear por firma) |
+| 3 | MQTT falla, GET OK | **HTTP 200** + log `mqtt_failed` |
+| 4 | Idempotencia POC | **`Set` en memoria** (RAM); persistencia diferida |
+| 5 | Monto | Variable **`MP_SALE_AMOUNT`** (ej. `500.00`) en servidor; validar en GET y usar en `POST /orders/create` |
+
+**`MP_SALE_AMOUNT`:**
+
+- Formato: string con dos decimales, ej. `500.00` (mismo formato que `total_amount` en MP).
+- Definir en Railway y en `.env` local.
+- Al cambiar precio: actualizar variable → redeploy; las órdenes nuevas (API o Postman) deben usar el mismo valor.
+- El firmware / MQTT solo recibe `duration_ms`; **no** necesita cambio al subir el precio.
+
+> El `MP_WEBHOOK_SECRET` de **modo prueba** ≠ modo productivo — actualizar en Fase 6.
 
 ---
 
@@ -224,6 +454,7 @@ MP_ACCESS_TOKEN=APP_USR-...          # Token sandbox (cambiar a prod en Fase 6)
 MP_USER_ID=3420512522
 MP_EXTERNAL_POS_ID=MATEPOINT001POS001
 MP_WEBHOOK_SECRET=                   # Clave secreta de la app en el portal MP
+MP_SALE_AMOUNT=500.00                # Precio por porción (ARS); mínimo MP $ 15.00
 
 # MQTT — prototipo: broker público HiveMQ (sin cuenta)
 MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt

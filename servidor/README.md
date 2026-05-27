@@ -9,8 +9,8 @@ Documentación completa: [`../servidor-mate-point.md`](../servidor-mate-point.md
 | Método | Ruta | Estado |
 |--------|------|--------|
 | `GET` | `/health` | Implementado |
-| `POST` | `/webhook/mp` | Esqueleto (Fase 3) |
-| `POST` | `/orders/create` | Esqueleto (Fase 3) |
+| `POST` | `/webhook/mp` | **Implementado** — firma (C) + GET orden + MQTT |
+| `POST` | `/orders/create` | Pendiente |
 
 ## Desarrollo local
 

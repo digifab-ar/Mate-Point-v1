@@ -13,7 +13,7 @@
 
 | Parámetro | Valor | Notas |
 |-----------|-------|-------|
-| **Precio de venta** | **$ 500,00 ARS** | `total_amount` y `unit_price` en órdenes MP |
+| **Precio de venta** | **`MP_SALE_AMOUNT`** (ej. `500.00` ARS) | Variable en servidor/Railway; `total_amount` en órdenes MP. Mínimo MP: $ 15,00 |
 | **Tiempo de dispensado** | **120 s (120 000 ms)** | `duration_ms` en payload MQTT `command` |
 | **`device_id`** | **`MATEPOINT001`** | Variable `DEVICE_ID` en `.env`; topic MQTT y `external_store_id` |
 
@@ -478,6 +478,8 @@ MP_ACCESS_TOKEN=
 MP_USER_ID=3420512522
 MP_EXTERNAL_STORE_ID=MATEPOINT001
 MP_EXTERNAL_POS_ID=MATEPOINT001POS001
+MP_SALE_AMOUNT=500.00
+MP_WEBHOOK_SECRET=
 MP_STORE_ID=77230109
 MP_POS_ID=132339357
 MP_QR_STATIC_URL=https://www.mercadopago.com/instore/merchant/qr/132339357/5507995c943b40ea96c23d3b511b5bb3ad50efc5a5b940f39a305d7a5d413839.png
@@ -523,11 +525,14 @@ MP también envía parámetros en query string (`data.id`, `type=order`) en el P
 |------|--------|
 | Recibir POST y responder **200** | **Completado** |
 | Log `webhook_received` en Railway | **Completado** |
-| Validar `x-signature` | **Pendiente** |
-| `GET /v1/orders/{id}` defensivo antes de dispensar | **Pendiente** |
-| Publicar MQTT `dispense` | **Pendiente** |
+| Validar `x-signature` (estrategia C) | **Implementado** — `servidor/src/utils/signature.js` |
+| `GET /v1/orders/{id}` antes de dispensar | **Implementado** — `servidor/src/services/mercadopago.js` |
+| Idempotencia por `order_id` | **Implementado** — RAM |
+| Publicar MQTT `dispense` | **Implementado** — falta prueba e2e en Railway |
 
-Doc: [Notificaciones QR](https://www.mercadopago.com.ar/developers/es/docs/qr-code/notifications)
+> **QR + firma:** MP documenta que las notificaciones de Código QR pueden **no ser verificables** con la clave secreta. En pruebas llegó `x-signature`; conviene implementar **GET obligatorio** y definir si la firma bloquea o solo audita (ver §5.2.A en `servidor-mate-point.md`).
+
+Doc: [Webhooks MP](https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/webhooks) · [Notificaciones QR](https://www.mercadopago.com.ar/developers/es/docs/qr-code/notifications)
 
 ---
 
@@ -573,7 +578,7 @@ Doc: [Notificaciones QR](https://www.mercadopago.com.ar/developers/es/docs/qr-co
 | 3 | Pago con app MP (QR fijo) | ✅ |
 | 4 | `GET /v1/orders/{id}` → `processed` / `accredited` | ✅ |
 | 5 | Webhook en Railway (`order.processed`, HTTP 200) | ✅ |
-| 6 | Log `mqtt_published` tras pago | ⏳ Pendiente |
+| 6 | Log `mqtt_published` tras pago (post-deploy) | ⏳ Pendiente |
 | 7 | ESP32 recibe `dispense` y activa dispensador | ⏳ Fase 4 |
 
 **Checklist rápido para repetir prueba webhook:**
