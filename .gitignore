@@ -1,0 +1,19 @@
+# Dependencias
+node_modules/
+servidor/node_modules/
+
+# Secretos
+.env
+.env.*
+!.env.example
+servidor/.env
+
+# Logs y OS
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Build
+dist/
+coverage/
