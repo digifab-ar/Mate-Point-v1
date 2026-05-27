@@ -2,7 +2,24 @@
 
 **Proyecto:** Mate Point — Dispensador de agua caliente  
 **OT:** OT-00268 — Etapa 3  
-**Última actualización:** 2026-05-27
+**Última actualización:** 2026-05-27  
+**Repositorio:** [github.com/digifab-ar/Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1)  
+**Servidor (Railway):** `https://mate-point-v1-production.up.railway.app`
+
+---
+
+## Estado actual — resumen ejecutivo
+
+| Área | Implementado | Pendiente |
+|------|--------------|-----------|
+| **MP — QR estático sandbox** | Orden, pago, GET `processed/accredited` (Postman + app) | `POST /orders/create` desde el servidor |
+| **MP — Webhook** | URL en portal (modo prueba), MP envía `order.processed`, servidor responde **200** y loguea payload | Validar `x-signature`, consultar orden vía API antes de dispensar |
+| **Backend Railway** | Deploy activo, `GET /health`, esqueleto `POST /webhook/mp` | Lógica completa Fase 3 + `POST /orders/create` |
+| **MQTT** | Definido broker público HiveMQ; cliente en código (conexión si hay `MQTT_BROKER_URL`) | Publicar `dispense` al recibir pago; firmware ESP32 suscrito |
+| **Hardware / pantalla** | Documentación | Relevamiento UART Nobana, firmware Waveshare (Fases 4–5) |
+| **Producción MP** | — | Credenciales productivas, webhook modo productivo (Fase 6) |
+
+**Última prueba end-to-end validada (2026-05-27):** orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD` (`mate-001-20260527-002`) → pago $ 500 → webhook en Railway con `action: order.processed`, `status: processed`, `accredited`. **MQTT dispensado:** no probado aún.
 
 ---
 
@@ -14,11 +31,11 @@ Ver tabla completa en `integracion-mercadopago-qr.md` §10. Resumen:
 |------|------------|--------|
 | 0 | Definición precio, tiempo dispensado, `device_id` | **Completado** |
 | 1 | App MP + sucursal + caja | **Completado** |
-| 2 | Crear órdenes QR y probar pago (Postman) | En curso |
-| 3 | Webhook + backend (Railway + Node.js + HiveMQ) | Pendiente |
+| 2 | Crear órdenes QR estático y probar pago (Postman) | **Completado** |
+| 3 | Webhook + backend (Railway + Node.js + MQTT) | **En curso** |
 | 4 | MQTT + ESP32 → UART Nobana (TXS0108E) | Pendiente |
 | **5** | **Pantalla QR + UX máquina** | **Pendiente** |
-| 6 | Producción (credenciales prod, HTTPS fijo) | Pendiente |
+| 6 | Producción (credenciales prod, HTTPS) | Pendiente |
 
 ---
 
@@ -49,7 +66,7 @@ Definir los parámetros operativos básicos del Mate Point antes de comenzar la 
 
 ### Objetivo
 
-Configurar la cuenta de MercadoPago con la aplicación, sucursal y caja necesarias para emitir QR dinámicos de cobro.
+Configurar la cuenta de MercadoPago con la aplicación, sucursal y caja necesarias para cobros con **QR estático**.
 
 ### Pasos detallados
 
@@ -109,33 +126,42 @@ crear orden → el usuario escanea el QR fijo de la caja → pago aprobado → w
 Implementar el servidor backend en **Railway** (Node.js + Express) que recibe las notificaciones de pago de MercadoPago, las valida contra la API de MP y publica el comando de dispensado vía MQTT.
 
 > **Repositorio:** [github.com/digifab-ar/Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1) — código en `servidor/`  
-> **Deploy:** Railway — Root Directory `servidor`, HTTPS permanente.  
-> **MQTT POC:** broker público [broker.hivemq.com](https://www.hivemq.com/mqtt/public-mqtt-broker/) — servidor `wss://…:8884/mqtt`, ESP32 `mqtt://…:1883` (sin cluster).  
-> Ver `servidor-mate-point.md` §3.2 (alternativas).
+> **Deploy:** Railway — Root Directory `servidor` — `https://mate-point-v1-production.up.railway.app`  
+> **Webhook MP (prueba):** `https://mate-point-v1-production.up.railway.app/webhook/mp` — evento **Order (Mercado Pago)**  
+> **MQTT POC:** broker público [broker.hivemq.com](https://www.hivemq.com/mqtt/public-mqtt-broker/) — servidor `wss://broker.hivemq.com:8884/mqtt`, ESP32 `mqtt://broker.hivemq.com:1883`  
+> Ver `servidor-mate-point.md` §3.2 y checklist §11.
 
 ### Pasos detallados
 
 | Paso | Tarea | Estado |
 |------|-------|--------|
-| 3.1 | Repo [Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1) — estructura `servidor/` Node.js + Express | En curso |
-| 3.2 | Configurar MQTT: broker público HiveMQ (`8884` WSS servidor, `1883` TCP ESP32) | Pendiente |
-| 3.3 | Deploy en Railway: conectar repo, configurar variables de entorno, verificar `GET /health` | Pendiente |
-| 3.4 | Implementar `POST /webhook/mp`: recibir IPN, validar `x-signature` | Pendiente |
-| 3.5 | Consultar orden via `GET /v1/orders/{id}` y verificar `status: processed` / `accredited` | Pendiente |
-| 3.6 | Publicar MQTT `{ cmd: "dispense", duration_ms: 120000 }` al topic `mate/MATEPOINT001/command` | Pendiente |
-| 3.7 | Registrar log de cada transacción (timestamp, `order_id`, `device_id`, resultado) | Pendiente |
-| 3.8 | Registrar URL Railway como webhook en Portal MP Developers | Pendiente |
-| 3.9 | Prueba end-to-end sandbox: pago → webhook Railway → MQTT HiveMQ → log verificado | Pendiente |
+| 3.1 | Repo [Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1) — estructura `servidor/` Node.js + Express | **Completado** |
+| 3.2 | Documentar y configurar MQTT (broker público HiveMQ en `.env` / Railway) | **Completado** |
+| 3.3 | Deploy en Railway: repo conectado, variables de entorno, `GET /health` | **Completado** |
+| 3.4 | `POST /webhook/mp`: recibir IPN, responder 200, log `webhook_received` | **Completado** |
+| 3.4b | Validar `x-signature` con `MP_WEBHOOK_SECRET` | Pendiente |
+| 3.5 | Consultar orden via `GET /v1/orders/{id}` y verificar `processed` / `accredited` (defensivo) | Pendiente |
+| 3.6 | Publicar MQTT `{ cmd: "dispense", duration_ms: 120000 }` en `mate/MATEPOINT001/command` | Pendiente |
+| 3.7 | Log estructurado `dispense_triggered` (orden, monto, `mqtt_published`) | Pendiente |
+| 3.8 | URL webhook registrada en Portal MP (modo prueba) | **Completado** |
+| 3.9 | Prueba e2e: pago → webhook → **MQTT** → log | **Parcial** (webhook OK; MQTT pendiente) |
+| 3.10 | Implementar `POST /orders/create` en el servidor (opcional: reemplazar Postman) | Pendiente |
 
 ### Criterios de aceptación Fase 3
 
-- [ ] `GET /health` en Railway responde `{ status: "ok", mqtt: "connected" }`
-- [ ] El backend recibe correctamente las notificaciones IPN de MP
+- [x] `GET /health` en Railway responde (servicio desplegado)
+- [x] El backend recibe notificaciones IPN de MP (`order.processed`, HTTP 200)
 - [ ] La validación `x-signature` pasa correctamente
 - [ ] Solo los pagos con `status: "processed"` / `accredited` disparan el MQTT
-- [ ] El mensaje MQTT llega a HiveMQ con `device_id` y `duration_ms: 120000`
-- [ ] Existe log JSON de cada transacción procesada
-- [ ] Flujo completo sandbox validado: pago → webhook → MQTT → log
+- [ ] El mensaje MQTT llega al broker con `device_id` y `duration_ms: 120000`
+- [ ] Existe log JSON `dispense_triggered` por transacción procesada
+- [ ] Flujo completo sandbox: pago → webhook → MQTT → log
+
+### Pendiente para cerrar Fase 3
+
+1. Implementar en `servidor/src/routes/webhook.js`: firma → (opcional) `GET /v1/orders/{id}` → `publishDispense()`.
+2. Confirmar en logs Railway: `mqtt_connected` y `mqtt_published` tras un pago de prueba.
+3. Verificar variables en Railway: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MQTT_BROKER_URL`, `MQTT_DEVICE_ID`, `DISPENSE_DURATION_MS`.
 
 ---
 
@@ -401,4 +427,5 @@ Fase 6 (Producción)
 | 2026-05-27 | Documento completo: secciones detalladas para todas las fases (0–6) en orden consecutivo; Fase 4 actualizada — sin relé, comando vía UART2 → TXS0108E → PCB Nobana |
 | 2026-05-27 | Fase 0 completada: precio $ 500,00 ARS, tiempo dispensado 120 s (120 000 ms), `device_id` = `MATEPOINT001` |
 | 2026-05-27 | Fase 2 completada: flujo QR estático validado en sandbox (orden `ORDTST01KSN8G14TKMBSTCF1G4TXJ355`, pago `accredited`) |
-| 2026-05-27 | Fase 3 definida: deploy Railway (Node.js), broker HiveMQ Cloud, estructura `servidor-mate-point.md` creada |
+| 2026-05-27 | Fase 3 definida: deploy Railway (Node.js), broker HiveMQ, `servidor-mate-point.md` |
+| 2026-05-27 | Fase 3 en curso: Railway `mate-point-v1-production`, webhook MP recibe `order.processed` (orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`); pendiente firma + MQTT |

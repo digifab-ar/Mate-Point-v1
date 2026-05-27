@@ -3,6 +3,8 @@
 **Proyecto:** Dispensador de agua caliente (prototipo ESP32)  
 **OT:** OT-00268 — Etapa 3  
 **Aplicación MP:** Mate point  
+**Repositorio:** [github.com/digifab-ar/Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1)  
+**Servidor:** `https://mate-point-v1-production.up.railway.app` — ver [`servidor-mate-point.md`](servidor-mate-point.md)  
 **Última actualización:** 2026-05-27
 
 ---
@@ -16,6 +18,22 @@
 | **`device_id`** | **`MATEPOINT001`** | Variable `DEVICE_ID` en `.env`; topic MQTT y `external_store_id` |
 
 > Parámetros definidos en Fase 0 — 2026-05-27. Ver criterios de aceptación en `plan-de-implementacion.md` §Fase 0.
+
+### 0.1 Estado de implementación (2026-05-27)
+
+| Componente | Estado | Detalle |
+|------------|--------|---------|
+| App MP + sucursal + caja | **Completado** | §3, §4 |
+| Usuario comprador sandbox | **Completado** | `TESTUSER8425831211451822431` (id `3431137704`) |
+| Órdenes QR `mode: static` (Postman) | **Completado** | Monto mínimo MP: $ 15 → precio POC **$ 500,00** |
+| Pago + GET orden `processed/accredited` | **Completado** | Ej.: `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`, ref. `mate-001-20260527-002` |
+| Backend Railway | **Desplegado** | `mate-point-v1-production.up.railway.app` |
+| Webhook MP (modo prueba) | **Recibiendo** | URL §7; evento **Order**; `action: order.processed`; respuesta **200** |
+| Validación `x-signature` | **Pendiente** | Código esqueleto en `servidor/` |
+| MQTT `dispense` al pagar | **Pendiente** | Broker definido; publicación en webhook pendiente |
+| Firmware ESP32 / UART Nobana | **Pendiente** | Fases 4–5 |
+
+**Próximo hito:** completar handler del webhook (firma → MQTT) y probar `mqtt_published` en logs Railway.
 
 ---
 
@@ -472,48 +490,98 @@ DISPENSE_DURATION_MS=120000
 
 ---
 
-## 7. Webhooks (pendiente)
+## 7. Webhooks
 
-Configurar en Mate point → Webhooks:
+### 7.1 Configuración activa (modo prueba)
 
-- Evento: **Order**
-- URL: servidor HTTPS (en desarrollo: ngrok)
-- Validar header `x-signature` con clave secreta de la app
-- Acción relevante: `order.processed` → verificar `status: "processed"` y `status_detail: "accredited"` → disparar dispensado vía MQTT
-- Responder **HTTP 200/201** en menos de ~22 s
+| Campo | Valor |
+|-------|-------|
+| **URL** | `https://mate-point-v1-production.up.railway.app/webhook/mp` |
+| **Modo** | Prueba (sandbox) |
+| **Evento** | **Order (Mercado Pago)** |
+| **Clave secreta** | → variable `MP_WEBHOOK_SECRET` en Railway |
+
+### 7.2 Payload recibido (validado 2026-05-27)
+
+Ejemplo real tras pago de orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`:
+
+| Campo | Valor típico |
+|-------|----------------|
+| `action` | `order.processed` |
+| `type` | `order` |
+| `data.id` | ID de la orden (`ORDTST…`) |
+| `data.external_reference` | `mate-001-YYYYMMDD-NNN` |
+| `data.status` | `processed` |
+| `data.status_detail` | `accredited` |
+| `live_mode` | `false` (sandbox) |
+
+MP también envía parámetros en query string (`data.id`, `type=order`) en el POST.
+
+### 7.3 Implementado vs pendiente en el servidor
+
+| Ítem | Estado |
+|------|--------|
+| Recibir POST y responder **200** | **Completado** |
+| Log `webhook_received` en Railway | **Completado** |
+| Validar `x-signature` | **Pendiente** |
+| `GET /v1/orders/{id}` defensivo antes de dispensar | **Pendiente** |
+| Publicar MQTT `dispense` | **Pendiente** |
 
 Doc: [Notificaciones QR](https://www.mercadopago.com.ar/developers/es/docs/qr-code/notifications)
 
 ---
 
-## 8. MQTT — Borrador de topics (ESP32)
+## 8. MQTT — Topics y broker (prototipo)
 
-```
-dispensador/{device_id}/command   →  servidor publica
-dispensador/{device_id}/status    →  ESP32 publica
-```
+| Rol | Topic |
+|-----|-------|
+| Servidor → ESP32 | `mate/MATEPOINT001/command` |
+| ESP32 → Servidor | `mate/MATEPOINT001/status` |
 
-**Ejemplo payload command:**
+**Broker (POC):** [broker.hivemq.com](https://www.hivemq.com/mqtt/public-mqtt-broker/) — sin cuenta  
+- Servidor (Railway / Node): `MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt`  
+- ESP32: `mqtt://broker.hivemq.com:1883` (MQTT TCP)
+
+**Ejemplo payload `command`:**
 
 ```json
 {
   "cmd": "dispense",
-  "session_id": "mate-001-20260522-01",
-  "duration_ms": 120000
+  "duration_ms": 120000,
+  "order_id": "ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD",
+  "ts": 1748368856000
 }
 ```
+
+| Ítem MQTT | Estado |
+|-----------|--------|
+| Broker y topics definidos | **Completado** |
+| Cliente MQTT en servidor (conexión) | **En código** — verificar `mqtt: connected` en `/health` |
+| Publicar al recibir webhook de pago | **Pendiente** |
+| ESP32 suscrito y dispensando | **Pendiente** (Fase 4) |
 
 ---
 
 ## 9. Pruebas en sandbox
 
-> Ver guía detallada en **§5.4** (request Postman completo) y **§5.5** (escaneo con la app).
+> Guía Postman: **§5.4** y **§5.5**. Plan detallado: `plan-de-implementacion.md`.
 
-1. Crear cuenta de prueba compradora (§5.5 Paso 1).
-2. Crear orden en Postman con `mode: "static"` (§5.4) → verificar `status: created` / `ready_to_process`.
-3. Abrir app MP con la cuenta compradora test → escanear QR fijo de la caja (§5.5 Pasos 2–4).
-4. Confirmar pago en la app → verificar con `GET /v1/orders/{id}` → `status: processed` / `accredited` ✅ — **validado 2026-05-27**.
-5. Una vez validado el flujo: avanzar a Fase 3 (webhook + backend).
+| Paso | Prueba | Estado |
+|------|--------|--------|
+| 1 | Usuario comprador sandbox | ✅ |
+| 2 | `POST /v1/orders` (`mode: static`, $ 500) | ✅ |
+| 3 | Pago con app MP (QR fijo) | ✅ |
+| 4 | `GET /v1/orders/{id}` → `processed` / `accredited` | ✅ |
+| 5 | Webhook en Railway (`order.processed`, HTTP 200) | ✅ |
+| 6 | Log `mqtt_published` tras pago | ⏳ Pendiente |
+| 7 | ESP32 recibe `dispense` y activa dispensador | ⏳ Fase 4 |
+
+**Checklist rápido para repetir prueba webhook:**
+
+1. Crear orden (Postman §5.4) con `external_reference` nuevo (`-003`, …).
+2. Escanear QR estático y pagar con usuario test.
+3. Revisar logs Railway: `webhook_received` con mismo `data.id` que la orden.
+4. (Cuando esté implementado) Verificar `dispense_triggered` y `mqtt_published`.
 
 ---
 
@@ -523,11 +591,13 @@ dispensador/{device_id}/status    →  ESP32 publica
 |------|------------|--------|
 | 0 | Definición precio, tiempo dispensado, `device_id` | **Completado** |
 | 1 | App MP + sucursal + caja | **Completado** |
-| 2 | Crear órdenes QR modo **estático** y probar pago (Postman) | **Completado** |
-| 3 | Webhook + backend mínimo | Pendiente |
-| 4 | MQTT + ESP32 (relay) | Pendiente |
-| 5 | Pantalla QR + UX máquina | Pendiente |
-| 6 | Producción (credenciales prod, HTTPS fijo) | Pendiente |
+| 2 | Órdenes QR **estático** + pago sandbox (Postman) | **Completado** |
+| 3 | Webhook + backend Railway + MQTT | **En curso** — webhook OK; firma + MQTT pendiente |
+| 4 | ESP32 → UART Nobana + MQTT | Pendiente |
+| 5 | Pantalla QR estático + UX | Pendiente |
+| 6 | MP producción + webhook modo productivo | Pendiente |
+
+Detalle de pasos y criterios: [`plan-de-implementacion.md`](plan-de-implementacion.md).
 
 ---
 
@@ -596,3 +666,4 @@ https://www.mercadopago.com/instore/merchant/qr/132339357/5507995c943b40ea96c23d
 | 2026-05-27 | Fase 2 completada ✅: flujo QR estático validado en sandbox. Documentado status real `processed/accredited` (v1/orders). Orden `ORDTST01KSN8G14TKMBSTCF1G4TXJ355`. |
 | 2026-05-27 | Precio de venta actualizado: $ 1,00 → **$ 500,00 ARS** (mínimo MP: $ 15,00); actualizado §0, §5.3, §5.4 |
 | 2026-05-27 | Limpieza POC: eliminadas todas las referencias a QR dinámico (§5.3, §13.2, §13.3); doc queda solo con QR estático |
+| 2026-05-27 | §0.1 estado implementación; §7 webhooks Railway; §8–§10 actualizados. Fase 3 parcial: webhook `order.processed` OK |
