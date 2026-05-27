@@ -26,14 +26,45 @@
 | App MP + sucursal + caja | **Completado** | §3, §4 |
 | Usuario comprador sandbox | **Completado** | `TESTUSER8425831211451822431` (id `3431137704`) |
 | Órdenes QR `mode: static` (Postman) | **Completado** | Monto mínimo MP: $ 15 → precio POC **$ 500,00** |
-| Pago + GET orden `processed/accredited` | **Completado** | Ej.: `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`, ref. `mate-001-20260527-002` |
+| Pago + GET orden `processed/accredited` | **Completado** | §5.4–5.5, §9 |
 | Backend Railway | **Desplegado** | `mate-point-v1-production.up.railway.app` |
-| Webhook MP (modo prueba) | **Recibiendo** | URL §7; evento **Order**; `action: order.processed`; respuesta **200** |
-| Validación `x-signature` | **Pendiente** | Código esqueleto en `servidor/` |
-| MQTT `dispense` al pagar | **Pendiente** | Broker definido; publicación en webhook pendiente |
+| Webhook + handler completo | **Completado** | Firma (estrategia C) + GET orden + idempotencia + MQTT |
+| Prueba e2e backend | **Completado** | Orden `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` — ver §0.2 |
 | Firmware ESP32 / UART Nobana | **Pendiente** | Fases 4–5 |
 
-**Próximo hito:** completar handler del webhook (firma → MQTT) y probar `mqtt_published` en logs Railway.
+**Próximo hito:** Fase 4 — ESP32 suscrito a `mate/MATEPOINT001/command` y dispensado vía UART Nobana.
+
+### 0.2 Resultados prueba e2e — backend (2026-05-27)
+
+Prueba que cierra **Fase 3** (pago sandbox → webhook Railway → MQTT en broker público).
+
+| Campo | Valor |
+|-------|-------|
+| **Orden** | `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` |
+| **external_reference** | `mate-001-20260527-003` |
+| **Pago** | `PAY01KSNFEN4AH15WRVPMS8YQJ0BH` |
+| **Monto** | $ 500,00 ARS |
+| **Webhook** | `action: order.processed`, HTTP **200** |
+
+**Secuencia de logs Railway (orden cronológico):**
+
+| Evento | Notas |
+|--------|-------|
+| `mqtt_connected` | Broker `wss://broker.hivemq.com:8884/mqtt` |
+| `webhook_received` | `data.id` = orden anterior |
+| `signature_invalid` | `hmac_mismatch` — **no bloqueó** (estrategia C, §7.3) |
+| `order_fetch_ok` | `status: processed` vía `GET /v1/orders/{id}` |
+| `dispense_triggered` | Monto validado contra `MP_SALE_AMOUNT` |
+| `mqtt_published` | Topic `mate/MATEPOINT001/command`, `duration_ms: 120000` |
+
+**Órdenes de prueba anteriores (solo webhook, pre-MQTT e2e):**
+
+| Orden | Ref. | Alcance validado |
+|-------|------|------------------|
+| `ORDTST01KSN8G14TKMBSTCF1G4TXJ355` | `mate-001-20260527-001` | Fase 2 — pago + GET |
+| `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD` | `mate-001-20260527-002` | Webhook `order.processed` en Railway |
+
+Detalle de criterios y pendientes post–Fase 3: `plan-de-implementacion.md` §Fase 3.
 
 ---
 
@@ -505,7 +536,9 @@ DISPENSE_DURATION_MS=120000
 
 ### 7.2 Payload recibido (validado 2026-05-27)
 
-Ejemplo real tras pago de orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`:
+Ejemplo real tras pago (webhook; e2e completo con MQTT: orden `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`, §0.2):
+
+Referencia intermedia — `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`:
 
 | Campo | Valor típico |
 |-------|----------------|
@@ -519,18 +552,20 @@ Ejemplo real tras pago de orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`:
 
 MP también envía parámetros en query string (`data.id`, `type=order`) en el POST.
 
-### 7.3 Implementado vs pendiente en el servidor
+### 7.3 Implementado en el servidor (Fase 3 — completada)
 
-| Ítem | Estado |
-|------|--------|
-| Recibir POST y responder **200** | **Completado** |
-| Log `webhook_received` en Railway | **Completado** |
-| Validar `x-signature` (estrategia C) | **Implementado** — `servidor/src/utils/signature.js` |
-| `GET /v1/orders/{id}` antes de dispensar | **Implementado** — `servidor/src/services/mercadopago.js` |
-| Idempotencia por `order_id` | **Implementado** — RAM |
-| Publicar MQTT `dispense` | **Implementado** — falta prueba e2e en Railway |
+| Ítem | Estado | Archivo / nota |
+|------|--------|----------------|
+| Recibir POST y responder **200** | **Completado** | `servidor/src/routes/webhook.js` |
+| Log `webhook_received` | **Completado** | Railway logs |
+| Validar `x-signature` (estrategia **C**) | **Completado** | `signature.js` — si falla, continúa con GET |
+| `GET /v1/orders/{id}` antes de dispensar | **Completado** | `mercadopago.js` |
+| Validar monto `MP_SALE_AMOUNT` | **Completado** | `validateOrderForDispense()` |
+| Idempotencia por `order_id` | **Completado** | RAM (`idempotency.js`) |
+| Publicar MQTT `dispense` | **Completado** | Prueba e2e §0.2 — `mqtt_published` |
+| MQTT falla → HTTP 200 + log | **Completado** | No reintenta pago en MP |
 
-> **QR + firma:** MP documenta que las notificaciones de Código QR pueden **no ser verificables** con la clave secreta. En pruebas llegó `x-signature`; conviene implementar **GET obligatorio** y definir si la firma bloquea o solo audita (ver §5.2.A en `servidor-mate-point.md`).
+> **QR + firma:** en la prueba e2e apareció `signature_invalid` (`hmac_mismatch`). Coherente con doc MP (QR puede no validar HMAC). La seguridad efectiva es **GET obligatorio** + monto en env (estrategia C — `servidor-mate-point.md` §5.2).
 
 Doc: [Webhooks MP](https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/webhooks) · [Notificaciones QR](https://www.mercadopago.com.ar/developers/es/docs/qr-code/notifications)
 
@@ -553,7 +588,7 @@ Doc: [Webhooks MP](https://www.mercadopago.com.ar/developers/es/docs/your-integr
 {
   "cmd": "dispense",
   "duration_ms": 120000,
-  "order_id": "ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD",
+  "order_id": "ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ",
   "ts": 1748368856000
 }
 ```
@@ -561,8 +596,8 @@ Doc: [Webhooks MP](https://www.mercadopago.com.ar/developers/es/docs/your-integr
 | Ítem MQTT | Estado |
 |-----------|--------|
 | Broker y topics definidos | **Completado** |
-| Cliente MQTT en servidor (conexión) | **En código** — verificar `mqtt: connected` en `/health` |
-| Publicar al recibir webhook de pago | **Pendiente** |
+| Cliente MQTT en servidor | **Completado** — `mqtt_connected` / `mqtt: connected` en `/health` |
+| Publicar al recibir webhook de pago | **Completado** — e2e §0.2 |
 | ESP32 suscrito y dispensando | **Pendiente** (Fase 4) |
 
 ---
@@ -578,15 +613,15 @@ Doc: [Webhooks MP](https://www.mercadopago.com.ar/developers/es/docs/your-integr
 | 3 | Pago con app MP (QR fijo) | ✅ |
 | 4 | `GET /v1/orders/{id}` → `processed` / `accredited` | ✅ |
 | 5 | Webhook en Railway (`order.processed`, HTTP 200) | ✅ |
-| 6 | Log `mqtt_published` tras pago (post-deploy) | ⏳ Pendiente |
+| 6 | Log `mqtt_published` tras pago (e2e backend) | ✅ — `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` |
 | 7 | ESP32 recibe `dispense` y activa dispensador | ⏳ Fase 4 |
 
-**Checklist rápido para repetir prueba webhook:**
+**Checklist rápido para repetir prueba e2e (backend):**
 
-1. Crear orden (Postman §5.4) con `external_reference` nuevo (`-003`, …).
-2. Escanear QR estático y pagar con usuario test.
-3. Revisar logs Railway: `webhook_received` con mismo `data.id` que la orden.
-4. (Cuando esté implementado) Verificar `dispense_triggered` y `mqtt_published`.
+1. Crear orden (Postman §5.4) con `external_reference` nuevo (`-004`, …).
+2. Escanear QR estático y pagar con usuario test (inmediatamente tras crear la orden).
+3. Revisar logs Railway: `webhook_received` → `order_fetch_ok` → `dispense_triggered` → `mqtt_published`.
+4. (Opcional) MQTTX suscrito a `mate/MATEPOINT001/command` para ver el payload en vivo.
 
 ---
 
@@ -597,7 +632,7 @@ Doc: [Webhooks MP](https://www.mercadopago.com.ar/developers/es/docs/your-integr
 | 0 | Definición precio, tiempo dispensado, `device_id` | **Completado** |
 | 1 | App MP + sucursal + caja | **Completado** |
 | 2 | Órdenes QR **estático** + pago sandbox (Postman) | **Completado** |
-| 3 | Webhook + backend Railway + MQTT | **En curso** — webhook OK; firma + MQTT pendiente |
+| 3 | Webhook + backend Railway + MQTT | **Completado** — e2e §0.2 |
 | 4 | ESP32 → UART Nobana + MQTT | Pendiente |
 | 5 | Pantalla QR estático + UX | Pendiente |
 | 6 | MP producción + webhook modo productivo | Pendiente |
@@ -672,3 +707,4 @@ https://www.mercadopago.com/instore/merchant/qr/132339357/5507995c943b40ea96c23d
 | 2026-05-27 | Precio de venta actualizado: $ 1,00 → **$ 500,00 ARS** (mínimo MP: $ 15,00); actualizado §0, §5.3, §5.4 |
 | 2026-05-27 | Limpieza POC: eliminadas todas las referencias a QR dinámico (§5.3, §13.2, §13.3); doc queda solo con QR estático |
 | 2026-05-27 | §0.1 estado implementación; §7 webhooks Railway; §8–§10 actualizados. Fase 3 parcial: webhook `order.processed` OK |
+| 2026-05-27 | **Fase 3 completada** — §0.2 resultados e2e `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`; §7.3, §8–§10 actualizados (`mqtt_published` validado) |

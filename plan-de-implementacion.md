@@ -10,16 +10,16 @@
 
 ## Estado actual — resumen ejecutivo
 
-| Área | Implementado | Pendiente |
-|------|--------------|-----------|
-| **MP — QR estático sandbox** | Orden, pago, GET `processed/accredited` (Postman + app) | `POST /orders/create` desde el servidor |
-| **MP — Webhook** | URL en portal (modo prueba), MP envía `order.processed`, servidor responde **200** y loguea payload | Validar `x-signature`, consultar orden vía API antes de dispensar |
-| **Backend Railway** | Deploy activo, `GET /health`, esqueleto `POST /webhook/mp` | Lógica completa Fase 3 + `POST /orders/create` |
-| **MQTT** | Definido broker público HiveMQ; cliente en código (conexión si hay `MQTT_BROKER_URL`) | Publicar `dispense` al recibir pago; firmware ESP32 suscrito |
-| **Hardware / pantalla** | Documentación | Relevamiento UART Nobana, firmware Waveshare (Fases 4–5) |
-| **Producción MP** | — | Credenciales productivas, webhook modo productivo (Fase 6) |
+| Área | Estado | Notas |
+|------|--------|-------|
+| **Fases 0–2** | **Completadas** | QR estático, sandbox, Postman + app |
+| **Fase 3 — Backend** | **Completada** | Webhook + GET orden + MQTT publicado (prueba e2e 2026-05-27) |
+| **Fase 4 — ESP32 / Nobana** | Pendiente | Suscribir firmware a `mate/MATEPOINT001/command` |
+| **Fase 5 — Pantalla** | Pendiente | Waveshare + UX |
+| **Fase 6 — Producción MP** | Pendiente | Credenciales prod, webhook modo productivo |
+| **Opcional** | Pendiente | `POST /orders/create` en servidor (hoy: orden vía Postman) |
 
-**Última prueba end-to-end validada (2026-05-27):** orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD` (`mate-001-20260527-002`) → pago $ 500 → webhook en Railway con `action: order.processed`, `status: processed`, `accredited`. **MQTT dispensado:** no probado aún.
+**Prueba e2e de referencia (2026-05-27):** orden `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`, ref. `mate-001-20260527-003`, $ 500 → logs Railway: `order_fetch_ok` → `dispense_triggered` → `mqtt_published`. Ver § resultados Fase 3.
 
 ---
 
@@ -32,7 +32,7 @@ Ver tabla completa en `integracion-mercadopago-qr.md` §10. Resumen:
 | 0 | Definición precio, tiempo dispensado, `device_id` | **Completado** |
 | 1 | App MP + sucursal + caja | **Completado** |
 | 2 | Crear órdenes QR estático y probar pago (Postman) | **Completado** |
-| 3 | Webhook + backend (Railway + Node.js + MQTT) | **En curso** |
+| 3 | Webhook + backend (Railway + Node.js + MQTT) | **Completado** |
 | 4 | MQTT + ESP32 → UART Nobana (TXS0108E) | Pendiente |
 | **5** | **Pantalla QR + UX máquina** | **Pendiente** |
 | 6 | Producción (credenciales prod, HTTPS) | Pendiente |
@@ -141,10 +141,10 @@ Implementar el servidor backend en **Railway** (Node.js + Express) que recibe la
 | 3.4 | `POST /webhook/mp`: recibir IPN, responder 200, log `webhook_received` | **Completado** |
 | 3.4b | Validar `x-signature` (estrategia C) con `MP_WEBHOOK_SECRET` | **Completado** |
 | 3.5 | Consultar orden via `GET /v1/orders/{id}` y verificar `processed` / `accredited` + `MP_SALE_AMOUNT` | **Completado** |
-| 3.6 | Publicar MQTT `{ cmd: "dispense", duration_ms: 120000 }` en `mate/MATEPOINT001/command` | **Completado** (código; falta prueba e2e) |
+| 3.6 | Publicar MQTT `{ cmd: "dispense", duration_ms: 120000 }` en `mate/MATEPOINT001/command` | **Completado** |
 | 3.7 | Log estructurado `dispense_triggered` / `mqtt_published` / `mqtt_failed` | **Completado** |
 | 3.8 | URL webhook registrada en Portal MP (modo prueba) | **Completado** |
-| 3.9 | Prueba e2e: pago → webhook → **MQTT** → log | **Parcial** (webhook OK; MQTT pendiente) |
+| 3.9 | Prueba e2e: pago → webhook → **MQTT** → log | **Completado** |
 | 3.10 | Implementar `POST /orders/create` en el servidor (opcional: reemplazar Postman) | Pendiente |
 
 ### Criterios de aceptación Fase 3
@@ -153,15 +153,34 @@ Implementar el servidor backend en **Railway** (Node.js + Express) que recibe la
 - [x] El backend recibe notificaciones IPN de MP (`order.processed`, HTTP 200)
 - [x] Validación `x-signature` implementada (estrategia C — no bloquea si falla)
 - [x] Solo órdenes `processed` / `accredited` y monto `MP_SALE_AMOUNT` disparan MQTT
-- [ ] El mensaje MQTT llega al broker (verificar `mqtt_published` tras deploy)
+- [x] El mensaje MQTT llega al broker (`mqtt_published` en logs Railway)
 - [x] Logs `dispense_triggered`, `signature_*`, `order_fetch_*` implementados
-- [ ] Flujo completo sandbox: pago → webhook → MQTT → log (prueba post-deploy)
+- [x] Flujo completo sandbox: pago → webhook → MQTT → log ✅
 
-### Pendiente para cerrar Fase 3
+### Resultados prueba e2e — 2026-05-27
 
-1. **Deploy** en Railway (push a `Mate-Point-v1`) con variables: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_SALE_AMOUNT`, `MQTT_BROKER_URL`, `MQTT_DEVICE_ID`, `DISPENSE_DURATION_MS`.
-2. Repetir pago sandbox y confirmar en logs: `order_fetch_ok` → `dispense_triggered` → `mqtt_published`.
-3. (Opcional) Verificar en logs si `signature_valid` o `signature_invalid` con QR.
+**Orden:** `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` · **Ref.:** `mate-001-20260527-003` · **Pago:** `PAY01KSNFEN4AH15WRVPMS8YQJ0BH` · **Monto:** $ 500,00
+
+| Paso | Resultado |
+|------|-----------|
+| POST `/v1/orders` | `status: created` |
+| Pago app MP (QR estático) | OK |
+| Webhook Railway | `order.processed`, HTTP **200** |
+| Firma `x-signature` | `signature_invalid` (`hmac_mismatch`) — estrategia **C**, no bloqueó |
+| GET orden (servidor) | `order_fetch_ok`, `processed` |
+| MQTT | `mqtt_published` → `mate/MATEPOINT001/command`, `duration_ms: 120000` |
+
+**Secuencia de logs Railway:** `mqtt_connected` → `webhook_received` → `signature_invalid` → `order_fetch_ok` → `dispense_triggered` → `mqtt_published`.
+
+**Nota firma:** coherente con doc MP (QR puede no validar HMAC). Seguridad efectiva vía **GET** + `MP_SALE_AMOUNT`. Revisar `MP_WEBHOOK_SECRET` en Railway solo si se quiere auditar `signature_valid`.
+
+**Fuera de alcance de esta prueba:** ESP32 recibiendo MQTT y dispensado físico (Fase 4).
+
+### Pendiente post–Fase 3
+
+- `POST /orders/create` en el servidor (reemplazar Postman).
+- (Opcional) Investigar `signature_valid` vs `hmac_mismatch`.
+- Fase 4: firmware ESP32 + UART Nobana.
 
 ---
 
@@ -428,4 +447,5 @@ Fase 6 (Producción)
 | 2026-05-27 | Fase 0 completada: precio $ 500,00 ARS, tiempo dispensado 120 s (120 000 ms), `device_id` = `MATEPOINT001` |
 | 2026-05-27 | Fase 2 completada: flujo QR estático validado en sandbox (orden `ORDTST01KSN8G14TKMBSTCF1G4TXJ355`, pago `accredited`) |
 | 2026-05-27 | Fase 3 definida: deploy Railway (Node.js), broker HiveMQ, `servidor-mate-point.md` |
-| 2026-05-27 | Fase 3 en curso: Railway `mate-point-v1-production`, webhook MP recibe `order.processed` (orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`); pendiente firma + MQTT |
+| 2026-05-27 | Fase 3 en curso: Railway `mate-point-v1-production`, webhook MP recibe `order.processed` (orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`) |
+| 2026-05-27 | **Fase 3 completada** — e2e `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`: `order_fetch_ok` → `dispense_triggered` → `mqtt_published` |

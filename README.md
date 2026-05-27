@@ -30,8 +30,10 @@ Dispensador de agua caliente con pago por **QR estático** de Mercado Pago, back
 | 0 | Parámetros (precio, tiempo, `device_id`) | Completado |
 | 1 | App MP + sucursal + caja | Completado |
 | 2 | QR estático + pago sandbox | Completado |
-| 3 | Webhook + backend (Railway) + MQTT | En curso |
+| 3 | Webhook + backend (Railway) + MQTT | Completado |
 | 4–6 | MQTT/ESP32, pantalla, producción | Pendiente |
+
+Última prueba e2e backend (Fase 3): orden `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` — detalle en [`integracion-mercadopago-qr.md`](integracion-mercadopago-qr.md) §0.2.
 
 ---
 

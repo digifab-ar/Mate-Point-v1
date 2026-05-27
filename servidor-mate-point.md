@@ -4,7 +4,9 @@
 **OT:** OT-00268 — Etapa 3  
 **Repositorio:** [github.com/digifab-ar/Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1)  
 **Código servidor:** carpeta [`servidor/`](servidor/)  
-**Última actualización:** 2026-05-27
+**Última actualización:** 2026-05-27  
+**Deploy:** `https://mate-point-v1-production.up.railway.app`  
+**Fase 3:** **Completada** — prueba e2e 2026-05-27 (`ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`, `mqtt_published`)
 
 ---
 
@@ -546,8 +548,8 @@ curl https://<slug>.up.railway.app/health
 {
   "cmd": "dispense",
   "duration_ms": 120000,
-  "order_id": "ORDTST01KSN8G14TKMBSTCF1G4TXJ355",
-  "ts": 1748368960000
+  "order_id": "ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ",
+  "ts": 1748369220000
 }
 ```
 
@@ -571,9 +573,9 @@ Cada pago procesado se registra en stdout (Railway captura los logs automáticam
 ```json
 {
   "event": "dispense_triggered",
-  "ts": "2026-05-27T17:43:47Z",
-  "order_id": "ORDTST01KSN8G14TKMBSTCF1G4TXJ355",
-  "external_reference": "mate-001-20260527-001",
+  "ts": "2026-05-27T16:47:00Z",
+  "order_id": "ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ",
+  "external_reference": "mate-001-20260527-003",
   "amount": "500.00",
   "device_id": "MATEPOINT001",
   "mqtt_published": true
@@ -588,15 +590,29 @@ Cada pago procesado se registra en stdout (Railway captura los logs automáticam
 
 | Ítem | Estado |
 |------|--------|
-| Repo [Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1) con carpeta `servidor/` | En curso |
-| Deploy en Railway activo (`/health` responde) | Pendiente |
-| Variables de entorno configuradas en Railway | Pendiente |
-| MQTT: `MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt` — conexión desde Railway | Pendiente |
-| Cliente MQTT conecta al broker desde Railway | Pendiente |
-| `POST /webhook/mp` recibe notificación de prueba de MP | Pendiente |
-| Validación `x-signature` implementada y testeada | Pendiente |
-| Pago sandbox → webhook → MQTT → log verificado end-to-end | Pendiente |
-| URL webhook registrada en Portal MP Developers | Pendiente |
+| Repo [Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1) con carpeta `servidor/` | **Completado** |
+| Deploy en Railway activo (`/health` responde) | **Completado** |
+| Variables de entorno configuradas en Railway | **Completado** |
+| MQTT: `MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt` — conexión desde Railway | **Completado** |
+| Cliente MQTT conecta al broker desde Railway | **Completado** (`mqtt_connected`) |
+| `POST /webhook/mp` recibe notificación de prueba de MP | **Completado** |
+| Validación `x-signature` (estrategia C) | **Completado** — e2e: `signature_invalid`, flujo continúa |
+| Pago sandbox → webhook → MQTT → log verificado end-to-end | **Completado** — ver §11.1 |
+| URL webhook registrada en Portal MP Developers | **Completado** (modo prueba) |
+
+### 11.1 Resultados prueba e2e (2026-05-27)
+
+| Campo | Valor |
+|-------|-------|
+| Orden | `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` |
+| Ref. | `mate-001-20260527-003` |
+| Topic MQTT | `mate/MATEPOINT001/command` |
+
+Logs Railway (orden): `mqtt_connected` → `webhook_received` → `signature_invalid` → `order_fetch_ok` → `dispense_triggered` → `mqtt_published` → `POST /webhook/mp` **200**.
+
+Detalle ampliado: `integracion-mercadopago-qr.md` §0.2 · `plan-de-implementacion.md` §Fase 3.
+
+**Pendiente (Fase 4):** ESP32 suscrito al topic y dispensado físico vía UART Nobana.
 
 ---
 
@@ -606,3 +622,4 @@ Cada pago procesado se registra en stdout (Railway captura los logs automáticam
 |-------|--------|
 | 2026-05-27 | Documento creado — arquitectura, stack, Railway y HiveMQ definidos para Fase 3 |
 | 2026-05-27 | Repo Mate-Point-v1; broker público HiveMQ (8884 WSS servidor, 1883 TCP ESP32); scaffold en `servidor/` |
+| 2026-05-27 | **Fase 3 completada** — checklist §11; e2e `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` con `mqtt_published` |

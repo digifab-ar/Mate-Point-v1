@@ -2,7 +2,7 @@
 
 **Proyecto:** Mate Point — Dispensador de agua caliente  
 **OT:** OT-00268 — Etapa 3  
-**Última actualización:** 2026-05-22
+**Última actualización:** 2026-05-27
 
 ---
 
@@ -114,11 +114,77 @@ ERROR ──[toque "cancelar"]─────────→ IDLE
 
 ---
 
-## 3. Topics MQTT
+## 3. Configuración Wi-Fi (v1)
+
+La configuración de red en la **primera versión** se realiza exclusivamente por **USB Type-C** y **monitor serie** (Arduino IDE u otra terminal). No hay portal cautivo ni formulario en la pantalla táctil.
+
+| Parámetro | Valor |
+|-----------|-------|
+| Interfaz | USB Type-C → UART de programación/debug del módulo Waveshare |
+| Baudrate | **115200** |
+| Timeout de conexión | **15 s** por intento |
+| Persistencia | SSID y contraseña en **NVS** solo tras validar conexión exitosa |
+| Contraseña en terminal | **Visible** en el monitor serie (sin enmascarado) |
+
+### 3.1 Monitor serie — estado continuo
+
+Desde el arranque, el firmware imprime en serie el estado de Wi-Fi y los **reintentos** de conexión (cuando hay credenciales en NVS o tras un comando `wifi`):
+
+```
+WiFi: desconectado — reintento 1/5...
+WiFi: desconectado — reintento 2/5...
+WiFi: conectado — SSID "MiLocal_2.4G"  IP 192.168.1.42  RSSI -58 dBm
+```
+
+Si no hay credenciales válidas en NVS, se indica que hay que ejecutar el comando `wifi`.
+
+### 3.2 Comando `wifi`
+
+El comando **`wifi`** está **siempre disponible** (también con credenciales ya guardadas), para cambiar de red sin re-flashear el firmware.
+
+Flujo interactivo:
+
+```
+> wifi
+Red: MiLocal_2.4G
+Password: mi_clave_secreta
+WiFi: conectando — intento 1...
+WiFi: conectando — intento 2...
+WiFi: conectado — red: MiLocal_2.4G  IP 192.168.1.42  RSSI -58 dBm
+MQTT: conectado
+Credenciales guardadas en NVS.
+```
+
+| Paso | Comportamiento |
+|------|----------------|
+| 1 | Solicita **nombre de red** (`Red:`). **Enter** confirma y pasa al siguiente paso (sin prompt adicional). |
+| 2 | Solicita **contraseña** (`Password:`), visible en el monitor serie. **Enter** confirma e inicia la conexión. |
+| 3 | Intenta conectar a Wi-Fi; en serie se muestran mensajes **conectando** y **reintentos** hasta éxito o timeout. |
+| 4 | Si la conexión Wi-Fi es exitiva, intenta **MQTT** y reporta `MQTT: conectado` o el error correspondiente. |
+| 5 | **Solo si** Wi-Fi (y la validación definida en firmware) fue exitosa: **escribe SSID y contraseña en NVS**. Si falla (SSID inexistente, contraseña incorrecta, timeout 15 s), **no** se actualiza NVS y se mantienen las credenciales anteriores si existían. |
+
+### 3.3 Timeouts y reintentos
+
+- Cada intento de asociación a la red configurada tiene un **timeout de 15 segundos**.
+- Los reintentos durante `wifi` y en arranque normal se loguean en serie con numeración (`intento 1`, `intento 2`, …).
+- Tras agotar reintentos en el flujo `wifi`, mensaje de error en serie; el operador puede volver a ejecutar `wifi`.
+
+### 3.4 Relación con la UI
+
+- El **footer** de pantalla (WiFi ● / MQTT ●) refleja el mismo estado que el monitor serie, para operación en campo sin laptop.
+- La configuración de red **no** usa pantallas LVGL; la pantalla puede mostrar un mensaje genérico de “sin red” si no hay conexión, sin teclado de SSID/clave.
+
+### 3.5 Evolución futura (fuera de v1)
+
+Alternativas documentadas para versiones posteriores: portal HTML vía SoftAP desde celular, o herramienta `nvs_partition_gen` en fábrica. La v1 no las implementa.
+
+---
+
+## 4. Topics MQTT
 
 Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 
-### 3.1 Tabla de topics
+### 4.1 Tabla de topics
 
 | Topic | Dirección | Payload relevante |
 |-------|-----------|-------------------|
@@ -127,7 +193,7 @@ Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 | `matepoint/{device_id}/status` | ESP32 → Servidor | `state`, `uptime_ms`, `wifi_rssi` |
 | `matepoint/{device_id}/cancel` | Servidor → ESP32 | — (cancela QR activo) |
 
-### 3.2 Payload `qr_show`
+### 4.2 Payload `qr_show`
 
 ```json
 {
@@ -140,7 +206,7 @@ Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 }
 ```
 
-### 3.3 Payload `status` (ESP32 → Servidor)
+### 4.3 Payload `status` (ESP32 → Servidor)
 
 ```json
 {
@@ -154,7 +220,7 @@ Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 
 ---
 
-## 4. Estructura de archivos — Arduino / PlatformIO
+## 5. Estructura de archivos — Arduino / PlatformIO
 
 ```
 mate_point_display/
@@ -162,9 +228,10 @@ mate_point_display/
 ├── lv_conf.h                   ← config LVGL (resolución, memoria)
 ├── src/
 │   ├── main.cpp
-│   ├── config.h                ← SSID, broker, device_id (desde NVS)
+│   ├── config.h                ← broker, device_id; SSID/clave desde NVS
 │   ├── state_machine.cpp       ← lógica de estados
-│   ├── wifi_manager.cpp        ← conexión / reconexión Wi-Fi
+│   ├── wifi_manager.cpp        ← conexión, reconexión, NVS, comando `wifi`
+│   ├── serial_console.cpp      ← monitor serie 115200, logs de estado/reintentos
 │   ├── mqtt_client.cpp         ← subscribe/publish MQTT
 │   └── ui/
 │       ├── ui.h / ui.cpp       ← inicialización LVGL + pantallas
@@ -190,10 +257,12 @@ PubSubClient       ← cliente MQTT (o AsyncMQTT)
 
 ---
 
-## 5. Historial
+## 6. Historial
 
 | Fecha | Cambio |
 |-------|--------|
 | 2026-05-22 | Documento creado a partir de la reorganización de `modulo-waveshare-esp32s3-touch-7b.md` |
 | 2026-05-26 | Referencia agregada al dispensador Nobana (`dispensador-nobana.md`) como base de hardware |
-| 2026-05-27 | Referencias actualizadas: §2.2 apunta a `arquitectura-hardware.md` §2.3 para comandos UART. Dependencias §4 actualizadas con nuevo `arquitectura-hardware.md` |
+| 2026-05-27 | Referencias actualizadas: §2.2 apunta a `arquitectura-hardware.md` §2.3 para comandos UART. Dependencias §5 actualizadas con nuevo `arquitectura-hardware.md` |
+| 2026-05-27 | §3 Configuración Wi-Fi v1: USB-C + monitor serie 115200, comando `wifi`, NVS tras validar, timeout 15 s, logs de reintentos, MQTT al conectar |
+| 2026-05-27 | §3.2: Red y Password se confirman solo con Enter (sin paso `¿Confirmar?`) |
