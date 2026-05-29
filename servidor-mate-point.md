@@ -4,9 +4,10 @@
 **OT:** OT-00268 — Etapa 3  
 **Repositorio:** [github.com/digifab-ar/Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1)  
 **Código servidor:** carpeta [`servidor/`](servidor/)  
-**Última actualización:** 2026-05-27  
+**Última actualización:** 2026-05-29  
 **Deploy:** `https://mate-point-v1-production.up.railway.app`  
-**Fase 3:** **Completada** — prueba e2e 2026-05-27 (`ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`, `mqtt_published`)
+**Fase 3:** **Completada** — prueba e2e 2026-05-27 (`ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`, `mqtt_published`)  
+**POC v0.2:** `POST /orders/create` y `/orders/cancel` — firmware [`mate_point_v0-2`](../mate_point_firmware/mate_point_v0-2/)
 
 ---
 
@@ -132,7 +133,8 @@ MercadoPago API
 ┌─────────────────────────────┐
 │   Railway — servidor-mp     │
 │                             │
-│  POST /orders/create        │◄── (futuro: ESP32 / frontend)
+│  POST /orders/create        │◄── ESP32 v0.2 (Comprar) / Postman
+│  POST /orders/cancel        │◄── ESP32 v0.2 (timeout 2 min)
 │  POST /webhook/mp           │
 │  GET  /health               │
 │                             │
@@ -160,7 +162,8 @@ MercadoPago API
 | Método | Path | Descripción |
 |--------|------|-------------|
 | `GET` | `/health` | Healthcheck — Railway lo usa para verificar que el servicio está vivo |
-| `POST` | `/orders/create` | Crea una orden QR estático en MP (llamado desde la máquina o manualmente) |
+| `POST` | `/orders/create` | Crea una orden QR estático en MP (ESP32 v0.2 al pulsar Comprar, o Postman) |
+| `POST` | `/orders/cancel` | Cancela orden en status `created` (timeout UI 2 min en v0.2) |
 | `POST` | `/webhook/mp` | Recibe notificaciones IPN de MercadoPago |
 
 ### 5.1 `POST /webhook/mp` — flujo interno
@@ -623,3 +626,4 @@ Detalle ampliado: `integracion-mercadopago-qr.md` §0.2 · `plan-de-implementaci
 | 2026-05-27 | Documento creado — arquitectura, stack, Railway y HiveMQ definidos para Fase 3 |
 | 2026-05-27 | Repo Mate-Point-v1; broker público HiveMQ (8884 WSS servidor, 1883 TCP ESP32); scaffold en `servidor/` |
 | 2026-05-27 | **Fase 3 completada** — checklist §11; e2e `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` con `mqtt_published` |
+| 2026-05-29 | **`POST /orders/create`** y **`POST /orders/cancel`** — órdenes desde ESP32 v0.2; `MP_ORDER_EXPIRATION=PT2M` |

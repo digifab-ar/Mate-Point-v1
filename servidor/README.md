@@ -10,8 +10,8 @@ Documentación completa: [`../servidor-mate-point.md`](../servidor-mate-point.md
 |--------|------|--------|
 | `GET` | `/health` | Implementado |
 | `POST` | `/webhook/mp` | **Implementado** — firma (C) + GET orden + MQTT |
-| `POST` | `/orders/create` | Crea orden QR estático en MP |
-| `POST` | `/orders/cancel` | Cancela orden en status `created` |
+| `POST` | `/orders/create` | **Implementado** — crea orden QR estático en MP |
+| `POST` | `/orders/cancel` | **Implementado** — cancela orden en status `created` |
 
 ## Desarrollo local
 

@@ -7,7 +7,7 @@
 **Última actualización decisiones:** 2026-05-29  
 **Estado POC 4.1–4.3:** **Completado** (2026-05-29) — firmware [`mate_point_v0-1/`](../mate_point_firmware/mate_point_v0-1/)  
 **E2E Railway (4.3.1):** **Completado** (2026-05-29)  
-**Próximo:** POC completa **v0.2** — ver [`plan-de-implementacion.md` § POC completa v0.2](../plan-de-implementacion.md#poc-completa-v02--comprar--qr--pago)
+**POC v0.2 (4.3.2):** **Implementado** (2026-05-29) — [`mate_point_v0-2/`](../mate_point_firmware/mate_point_v0-2/) · **E2E hardware pendiente**
 
 ---
 
@@ -19,7 +19,7 @@
 | **4.2** | Topics `mate/MATEPOINT001/{command,status}` | **Completado** |
 | **4.3** | Firmware `mate_point_v0-1` | **Completado** |
 | **4.3.1** | E2E Railway (pago → pantalla) | **Completado** |
-| **4.3.2** | POC completa v0.2 (Comprar → QR → pago/timeout) | **Próximo** |
+| **4.3.2** | POC completa v0.2 (Comprar → QR → pago/timeout) | **Implementado** — E2E hardware pendiente |
 
 **Implementación:** [`mate_point_firmware/mate_point_v0-1/`](../mate_point_firmware/mate_point_v0-1/) · spec [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](../mate_point_firmware/PLAN-IMPLEMENTACION.md)
 
@@ -37,7 +37,7 @@
 
 **Known issue (cosmético):** artefacto intermitente en labels footer WiFi/MQTT al primer connect (partial refresh LVGL RGB); label central siempre OK. Ver [`mate_point_firmware/PLAN-IMPLEMENTACION.md` §11](../mate_point_firmware/PLAN-IMPLEMENTACION.md).
 
-**Siguiente hito:** **POC completa v0.2** (4.3.2) — [`plan-de-implementacion.md`](../plan-de-implementacion.md#poc-completa-v02--comprar--qr--pago). Luego UART 4.4+.
+**Siguiente hito:** validación **E2E v0.2** en hardware; luego UART **4.4+**.
 
 ---
 
@@ -529,7 +529,7 @@ Ver tabla **Decisiones cerradas** al inicio del documento. No quedan preguntas b
 
 | Paso | Contenido | Estado |
 |------|-----------|--------|
-| **4.3.2** | POC completa v0.2: Comprar → QR → pago / timeout 2 min | **Próximo** — [`plan-de-implementacion.md`](../plan-de-implementacion.md#poc-completa-v02--comprar--qr--pago) |
+| **4.3.2** | POC completa v0.2: Comprar → QR → pago / timeout 2 min | **Implementado** — [`mate_point_v0-2`](../mate_point_firmware/mate_point_v0-2/) |
 | 4.4 | UART2 → TXS0108E → Nobana | Pendiente |
 | 4.5–4.6 | `dispense` real con `duration_ms` y STOP UART | Pendiente |
 | 4.7 | Alinear `status` con máquina de estados completa | Pendiente |
@@ -551,4 +551,4 @@ Ver tabla **Decisiones cerradas** al inicio del documento. No quedan preguntas b
 
 ---
 
-*Documento temporal — POC 4.1–4.3 + E2E Railway cerrados 2026-05-29. Próximo: POC v0.2 en `plan-de-implementacion.md`. Fusionar al cerrar UART (4.4+).*
+*Documento temporal — POC 4.1–4.3, E2E Railway y v0.2 cerrados en código (2026-05-29). Pendiente: E2E hardware v0.2. Fusionar al cerrar UART (4.4+).*

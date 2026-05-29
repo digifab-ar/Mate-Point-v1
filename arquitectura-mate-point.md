@@ -184,7 +184,7 @@ Alternativas documentadas para versiones posteriores: portal HTML vía SoftAP de
 
 Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 
-> **POC Fase 4 (2026-05-29):** implementados `mate/{device_id}/command` y `mate/{device_id}/status` en firmware [`mate_point_v0-1`](../mate_point_firmware/mate_point_v0-1/). Contrato operativo: [`servidor-mate-point.md`](servidor-mate-point.md) §9 · [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](../mate_point_firmware/PLAN-IMPLEMENTACION.md).
+> **POC Fase 4 (2026-05-29):** implementados `mate/{device_id}/command` y `mate/{device_id}/status` en firmware [`mate_point_v0-1`](../mate_point_firmware/mate_point_v0-1/). **POC v0.2:** [`mate_point_v0-2`](../mate_point_firmware/mate_point_v0-2/) — Comprar, HTTP órdenes, QR PROGMEM, timeout 2 min. Contrato operativo: [`servidor-mate-point.md`](servidor-mate-point.md) §9 · [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](../mate_point_firmware/PLAN-IMPLEMENTACION.md) §14–§15.
 
 ### 4.1 Tabla de topics
 
@@ -247,20 +247,23 @@ Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 
 ## 5. Estructura de archivos — firmware
 
-**Implementado (POC v0.1):**
+**Implementado (POC v0.1 + v0.2):**
 
 ```
 mate_point_firmware/
-├── PLAN-IMPLEMENTACION.md
+├── PLAN-IMPLEMENTACION.md     ← spec v0.1 + v0.2 (§14–§15)
 ├── README.md
 ├── reference/                 ← demo 13 Waveshare (backup)
-└── mate_point_v0-1/           ← abrir en Arduino IDE
-    ├── mate_point_v0-1.ino
-    ├── config.h
-    ├── display_ui.h / .cpp
-    ├── dispense_sim.h / .cpp
-    ├── mate_network.h / .cpp
-    └── [port Waveshare: lvgl_port, rgb_lcd, gt911, …]
+├── mate_point_v0-1/           ← MQTT + UI simulada
+│   ├── mate_point_v0-1.ino
+│   ├── config.h
+│   └── …
+└── mate_point_v0-2/           ← Comprar + QR + HTTP órdenes (POC completa)
+    ├── mate_point_v0-2.ino
+    ├── app_state.cpp / .h
+    ├── order_client.cpp / .h
+    ├── qr_static_img.c
+    └── …
 ```
 
 **Planificado (Fase 5 — referencia):**
@@ -300,4 +303,5 @@ PubSubClient       ← cliente MQTT (o AsyncMQTT)
 | 2026-05-27 | Referencias actualizadas: §2.2 apunta a `arquitectura-hardware.md` §2.3 para comandos UART. Dependencias §5 actualizadas con nuevo `arquitectura-hardware.md` |
 | 2026-05-27 | §3 Configuración Wi-Fi v1: USB-C + monitor serie 115200, comando `wifi`, NVS tras validar, timeout 15 s, logs de reintentos, MQTT al conectar |
 | 2026-05-27 | §3.2: Red y Password se confirman solo con Enter (sin paso `¿Confirmar?`) |
+| 2026-05-29 | §4 topics: v0.2 (`mate_point_v0-2`) Comprar + QR PROGMEM; §5 estructura firmware actualizada |
 | 2026-05-29 | §4 topics: separado POC (`mate/…`) vs Fase 5 planificado (`matepoint/…`); §5 apunta a [`mate_point_firmware/mate_point_v0-1/`](../mate_point_firmware/mate_point_v0-1/) |

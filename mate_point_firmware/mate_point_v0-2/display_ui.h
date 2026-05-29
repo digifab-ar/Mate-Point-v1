@@ -1,5 +1,7 @@
 #pragma once
 
+#include "lvgl.h"
+
 typedef void (*display_ui_comprar_cb_t)(void);
 
 void display_ui_init();

@@ -5,7 +5,7 @@
 **Base hardware:** Waveshare ESP32-S3-Touch-LCD-7B  
 **Device ID:** `MATEPOINT001`  
 **Última actualización decisiones:** 2026-05-29  
-**Estado:** **POC v0.1 completado** · **E2E Railway completado** · **Próximo: v0.2** (Comprar + QR)
+**Estado:** **POC v0.1 completado** · **POC v0.2 implementado** · **Pendiente: validación E2E en hardware** (Comprar → QR → pago)
 
 Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js)
 
@@ -22,9 +22,28 @@ Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · 
 | Dedup `order_id` | OK |
 | UART Nobana | Fuera de alcance |
 | E2E Railway (pago → pantalla) | **Completado** (2026-05-29) |
-| POC v0.2 (Comprar + QR) | **Próximo** — §14 |
+| POC v0.2 (Comprar + QR) | **Implementado** — §14 · §15 |
 
 **Abrir en Arduino:** [`mate_point_v0-1/mate_point_v0-1.ino`](mate_point_v0-1/mate_point_v0-1.ino)
+
+---
+
+## Estado v0.2 (2026-05-29)
+
+| Ítem | Estado |
+|------|--------|
+| Sketch `mate_point_v0-2` | **Implementado** — compila tras fix `display_ui.h` + `lvgl.h` |
+| Botón **Comprar** + máquina de estados | OK en código |
+| HTTP `POST /orders/create` y `/orders/cancel` | OK (`order_client.cpp` → Railway) |
+| QR estático LVGL (PROGMEM) | OK — `qr_static_img.c` 320×320 |
+| Timer 2 min + cancel en timeout | OK (`QR_TIMEOUT_MS`) |
+| MQTT `dispense` solo en `QR_SHOW` | OK |
+| UI **Dispensado** → terminado → Listo | OK (hereda v0.1) |
+| **E2E hardware** (escaneo QR + pago sandbox) | **Pendiente validación** |
+
+**Abrir en Arduino:** [`mate_point_v0-2/mate_point_v0-2.ino`](mate_point_v0-2/mate_point_v0-2.ino)
+
+Detalle de archivos y conversor LVGL: **§15**.
 
 ---
 
@@ -365,13 +384,13 @@ Pago sandbox → webhook → servidor publica `command` → misma secuencia en p
 
 ---
 
-## 12. Próximo hito — POC completa v0.2
+## 12. Próximo hito
 
-Ver [`plan-de-implementacion.md` § POC completa v0.2](../plan-de-implementacion.md#poc-completa-v02--comprar--qr--pago) y **§14** abajo.
+**Cerrado en código (2026-05-29):** POC v0.2 — ver **§15**.
 
-**Resumen:** botón **Comprar** → `POST /orders/create` → QR estático → pago (MQTT) o timeout **2 min** → cancelar orden → **Comprar**.
+**Pendiente:** validación **E2E en hardware** (Comprar → escanear QR sandbox → **Dispensado** → Listo; y timeout 2 min sin pago).
 
-Después de v0.2: **Fase 4.4+** UART Nobana.
+**Después:** **Fase 4.4+** UART Nobana.
 
 ---
 
@@ -410,30 +429,30 @@ Después de v0.2: **Fase 4.4+** UART Nobana.
 
 | Constante | Valor sugerido | Uso |
 |-----------|----------------|-----|
-| `SERVER_URL` | `https://<slug>.up.railway.app` | Base HTTP |
-| `ORDER_PRICE_ARS` | `500` | Body create (alinear servidor) |
+| `SERVER_HOST` | `mate-point-v1-production.up.railway.app` | HTTPS (puerto 443) |
+| `SERVER_PORT` | `443` | TLS |
 | `QR_TIMEOUT_MS` | `120000` | 2 min sin pago |
-| `QR_IMAGE_*` | PROGMEM o URL §13 MP | Imagen en pantalla |
+| QR imagen | `qr_static_img.c` | PROGMEM — ver §15 |
 
 ### 14.4 Módulos nuevos / cambios
 
 | Módulo | Responsabilidad |
 |--------|-----------------|
-| `order_client.cpp` | HTTP create + cancel contra Railway |
-| `display_ui.cpp` | Botón Comprar, contenedor QR, textos v0.2 |
-| `qr_image.cpp` | Decodificar/mostrar PNG estático en LVGL |
-| `app_state.cpp` | Máquina de estados §14.2 + timer QR |
-| `mate_network.cpp` | Solo aceptar dispense si `QR_SHOW` |
-| `dispense_sim.cpp` | Renombrar label **Dispensado** (era Dispensar) |
+| `order_client.cpp` / `.h` | HTTP `POST /orders/create` y `/orders/cancel` → Railway |
+| `app_state.cpp` / `.h` | Máquina de estados §14.2 + timer QR |
+| `display_ui.cpp` / `.h` | Botón Comprar, panel QR, countdown, `display_ui_set_qr_image()` |
+| `qr_static_img.c` + `qr_image.h` | Array C LVGL 8 (`qr_static_img`, `qr_static_map`) |
+| `mate_network.cpp` | Solo aceptar `dispense` si `QR_SHOW` |
+| `dispense_sim.cpp` | Label **Dispensado** (simulación v0.1) |
 
 ### 14.5 Dependencias servidor (bloqueantes)
 
-| Endpoint | Estado actual | Necesario para |
-|----------|---------------|----------------|
-| `POST /orders/create` | 501 | Crear orden al pulsar Comprar |
-| `POST /orders/cancel` | No existe | Timeout 2 min en UI |
+| Endpoint | Estado | Uso |
+|----------|--------|-----|
+| `POST /orders/create` | **Implementado** (`servidor/src/routes/orders.js`) | Toque Comprar |
+| `POST /orders/cancel` | **Implementado** | Timeout UI 2 min |
 
-Orden MP: `expiration_time: PT2M` alineado con timer UI (hoy Postman usa PT10M).
+Orden MP: `expiration_time: PT2M` vía `MP_ORDER_EXPIRATION` (alineado `QR_TIMEOUT_MS`).
 
 ### 14.6 QR estático en pantalla
 
@@ -446,21 +465,91 @@ Recomendación POC: **PROGMEM**.
 
 ### 14.7 Criterios de aceptación v0.2
 
-- [ ] Botón **Comprar** visible en reposo
-- [ ] Toque crea orden (HTTP) y muestra QR escaneable
-- [ ] Pago sandbox → **Dispensado** → terminado → Listo → Comprar
-- [ ] 2 min sin pago → Comprar + orden cancelada/expirada
-- [ ] E2E sin Postman manual
-- [ ] WiFi/MQTT footer operativo (known issue v0.1 aceptable)
+**Implementación (código):**
 
-### 14.8 Orden de implementación sugerido
+- [x] Botón **Comprar** visible en reposo
+- [x] Toque crea orden (HTTP) y muestra imagen QR en LVGL
+- [x] MQTT `dispense` en `QR_SHOW` → **Dispensado** → terminado → Listo → Comprar
+- [x] Timer 2 min → `POST /orders/cancel` → vuelve a **Comprar**
+- [x] WiFi/MQTT footer operativo (known issue v0.1 aceptable)
 
-1. Servidor: `/orders/create`
-2. Servidor: `/orders/cancel` (o documentar solo expiración MP)
-3. Fork `mate_point_v0-2`
-4. UI Comprar + estados
-5. HTTP create
-6. QR en LVGL
-7. Timer + cancel
-8. Integrar MQTT dispense → **Dispensado**
-9. E2E completo
+**Validación en hardware (pendiente):**
+
+- [ ] QR escaneable con app MP sandbox
+- [ ] E2E: Comprar → pago → **Dispensado** sin Postman
+- [ ] E2E: timeout 2 min sin pago
+
+### 14.8 Orden de implementación (registro)
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| 1 | Servidor `/orders/create` | **Hecho** |
+| 2 | Servidor `/orders/cancel` | **Hecho** |
+| 3 | Fork `mate_point_v0-2` | **Hecho** |
+| 4 | UI Comprar + estados | **Hecho** |
+| 5 | HTTP create | **Hecho** |
+| 6 | QR en LVGL (PROGMEM) | **Hecho** |
+| 7 | Timer + cancel | **Hecho** |
+| 8 | MQTT dispense → **Dispensado** | **Hecho** |
+| 9 | E2E completo en hardware | **Pendiente** |
+
+---
+
+## 15. Implementación v0.2 — registro técnico (2026-05-29)
+
+### 15.1 Estructura `mate_point_v0-2/`
+
+```
+mate_point_v0-2/
+├── mate_point_v0-2.ino
+├── config.h                 ← SERVER_HOST, QR_TIMEOUT_MS, MQTT topics
+├── app_state.cpp / .h       ← COMPRAR → CREATING → QR_SHOW → DISPENSE → LISTO
+├── order_client.cpp / .h    ← HTTPS create/cancel
+├── display_ui.cpp / .h      ← Comprar, panel QR, countdown
+├── qr_static_img.c          ← imagen QR (LVGL 8, 320×320)
+├── qr_image.h               ← extern qr_static_img
+├── mate_network.cpp         ← dispense solo en QR_SHOW
+├── dispense_sim.cpp         ← texto "Dispensado"
+└── [port Waveshare: lvgl_port, rgb_lcd, gt911, …]
+```
+
+### 15.2 Servidor (Railway)
+
+| Endpoint | Body | Respuesta |
+|----------|------|-----------|
+| `POST /orders/create` | `{ "device_id": "MATEPOINT001" }` (opcional) | `order_id`, `external_reference`, `expiration_time: PT2M` |
+| `POST /orders/cancel` | `{ "order_id": "ORD…" }` | `ok`, `status` |
+
+Implementación: [`servidor/src/routes/orders.js`](../servidor/src/routes/orders.js), [`mercadopago.js`](../servidor/src/services/mercadopago.js).
+
+### 15.3 QR estático en LVGL 8
+
+PNG fuente: [`integracion-mercadopago-qr.md`](../integracion-mercadopago-qr.md) §13.1 (320×320, fondo blanco opaco).
+
+**Conversor** ([LVGL Image Converter](https://lvgl.io/tools/imageconverter), pestaña **LVGL v8**):
+
+| Opción | Valor |
+|--------|--------|
+| Color format | `CF_TRUE_COLOR` |
+| Output format | **C array** (no Binary RGB565) |
+| Dither | off |
+| Big-endian | off |
+
+Símbolos en firmware: `qr_static_map[]`, `qr_static_img` (`lv_img_dsc_t`, `LV_IMG_CF_TRUE_COLOR`).
+
+**Integración UI:** al entrar en `QR_SHOW`, `app_state` llama `display_ui_set_qr_image(&qr_static_img)`.
+
+### 15.4 Compilación Arduino IDE
+
+`display_ui.h` declara `lv_img_dsc_t` → debe incluir `#include "lvgl.h"` (header autocontenido).
+
+Placa: Waveshare ESP32-S3-Touch-LCD-7 · `LV_COLOR_DEPTH=16` (RGB565).
+
+### 15.5 Prueba E2E sugerida
+
+1. Flashear `mate_point_v0-2.ino` · editar Wi‑Fi en `config.h`.
+2. Toque **Comprar** → ver QR + countdown 2:00.
+3. Escanear con MP sandbox → pagar → **Dispensado** → Listo → Comprar.
+4. Repetir sin pagar → a los 2 min vuelve a Comprar (orden cancelada en servidor).
+
+Monitor serie: `[app] order created`, `[app] QR timeout`, `[mqtt] dispense accepted`.

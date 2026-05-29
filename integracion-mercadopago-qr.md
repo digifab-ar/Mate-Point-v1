@@ -682,15 +682,17 @@ El QR estático es la imagen PNG fija asociada a la caja POS (`MATEPOINT001POS00
 https://www.mercadopago.com/instore/merchant/qr/132339357/5507995c943b40ea96c23d3b511b5bb3ad50efc5a5b940f39a305d7a5d413839.png
 ```
 
-**Opciones de implementación en el ESP32:**
+**Recomendación POC v0.2 (implementada):** Opción **B — PROGMEM** (`qr_static_img.c` en [`mate_point_v0-2/`](../mate_point_firmware/mate_point_v0-2/)).
+
+**Estado 2026-05-29:** imagen convertida con [LVGL Image Converter v8](https://lvgl.io/tools/imageconverter) — `CF_TRUE_COLOR`, C array, 320×320, fondo blanco opaco. Detalle técnico: [`mate_point_firmware/PLAN-IMPLEMENTACION.md` §15.3](../mate_point_firmware/PLAN-IMPLEMENTACION.md).
+
+**Alternativas (no usadas en v0.2):**
 
 | Opción | Descripción | Pros | Contras |
 |--------|-------------|------|---------|
 | A — Descargar al iniciar (HTTP) | `esp_http_client` descarga el PNG → `lv_img_set_src` | Siempre actualizada | Requiere Wi-Fi activo al boot |
 | B — Hardcodear en firmware (PROGMEM) | Convertir PNG a array C con `lvgl image converter` | Sin dependencia de red | Re-flashear si cambia el QR |
 | C — Guardar en TF Card | Archivo `qr_static.png` en SD | Fácil de reemplazar | Requiere tarjeta instalada |
-
-**Recomendación para prueba inicial:** Opción A (descarga al boot, cachear en PSRAM).
 
 ---
 
@@ -707,4 +709,4 @@ https://www.mercadopago.com/instore/merchant/qr/132339357/5507995c943b40ea96c23d
 | 2026-05-27 | Precio de venta actualizado: $ 1,00 → **$ 500,00 ARS** (mínimo MP: $ 15,00); actualizado §0, §5.3, §5.4 |
 | 2026-05-27 | Limpieza POC: eliminadas todas las referencias a QR dinámico (§5.3, §13.2, §13.3); doc queda solo con QR estático |
 | 2026-05-27 | §0.1 estado implementación; §7 webhooks Railway; §8–§10 actualizados. Fase 3 parcial: webhook `order.processed` OK |
-| 2026-05-27 | **Fase 3 completada** — §0.2 resultados e2e `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`; §7.3, §8–§10 actualizados (`mqtt_published` validado) |
+| 2026-05-29 | **POC v0.2:** QR estático en PROGMEM (`mate_point_v0-2/qr_static_img.c`); §13.1 actualizado |
