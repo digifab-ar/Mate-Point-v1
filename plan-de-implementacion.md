@@ -2,7 +2,7 @@
 
 **Proyecto:** Mate Point — Dispensador de agua caliente  
 **OT:** OT-00268 — Etapa 3  
-**Última actualización:** 2026-05-27  
+**Última actualización:** 2026-05-29  
 **Repositorio:** [github.com/digifab-ar/Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1)  
 **Servidor (Railway):** `https://mate-point-v1-production.up.railway.app`
 
@@ -14,12 +14,16 @@
 |------|--------|-------|
 | **Fases 0–2** | **Completadas** | QR estático, sandbox, Postman + app |
 | **Fase 3 — Backend** | **Completada** | Webhook + GET orden + MQTT publicado (prueba e2e 2026-05-27) |
-| **Fase 4 — ESP32 / Nobana** | Pendiente | Suscribir firmware a `mate/MATEPOINT001/command` |
-| **Fase 5 — Pantalla** | Pendiente | Waveshare + UX |
+| **Fase 4 — POC 4.1–4.3** | **Completada** | HiveMQ + topics + firmware `mate_point_v0-1` (simulación pantalla/MQTT, sin UART). E2E Railway validado. Ver [`fase-4-plan-4.1-4.3-TEMP.md`](fase-4-plan-4.1-4.3-TEMP.md) |
+| **Fase 4 — POC completa v0.2** | **Próximo** | Botón Comprar → QR estático → pago o timeout 2 min. Ver § [POC completa v0.2](#poc-completa-v02--comprar--qr--pago) |
+| **Fase 4 — UART Nobana (4.4–4.10)** | Pendiente | Tramas UART, dispensado real, watchdog |
+| **Fase 5 — Pantalla QR + UX** | Parcial | LVGL base y MQTT en POC; QR y 5 pantallas pendientes |
 | **Fase 6 — Producción MP** | Pendiente | Credenciales prod, webhook modo productivo |
 | **Opcional** | Pendiente | `POST /orders/create` en servidor (hoy: orden vía Postman) |
 
-**Prueba e2e de referencia (2026-05-27):** orden `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`, ref. `mate-001-20260527-003`, $ 500 → logs Railway: `order_fetch_ok` → `dispense_triggered` → `mqtt_published`. Ver § resultados Fase 3.
+**Prueba e2e backend (2026-05-27):** orden `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` → `mqtt_published`. Ver § Fase 3.
+
+**POC firmware (2026-05-29):** sketch [`mate_point_firmware/mate_point_v0-1/`](mate_point_firmware/mate_point_v0-1/) — Wi‑Fi, MQTT HiveMQ, UI Dispensar → terminado → Listo, `status` en `mate/MATEPOINT001/status`. Detalle: [`fase-4-plan-4.1-4.3-TEMP.md`](fase-4-plan-4.1-4.3-TEMP.md).
 
 ---
 
@@ -33,8 +37,8 @@ Ver tabla completa en `integracion-mercadopago-qr.md` §10. Resumen:
 | 1 | App MP + sucursal + caja | **Completado** |
 | 2 | Crear órdenes QR estático y probar pago (Postman) | **Completado** |
 | 3 | Webhook + backend (Railway + Node.js + MQTT) | **Completado** |
-| 4 | MQTT + ESP32 → UART Nobana (TXS0108E) | Pendiente |
-| **5** | **Pantalla QR + UX máquina** | **Pendiente** |
+| 4 | MQTT + ESP32 → UART Nobana (TXS0108E) | **POC 4.1–4.3 completado** · **POC v0.2 en curso** · UART 4.4–4.10 pendiente |
+| **5** | **Pantalla QR + UX máquina** | **Parcial** (LVGL + MQTT en POC) |
 | 6 | Producción (credenciales prod, HTTPS) | Pendiente |
 
 ---
@@ -145,7 +149,7 @@ Implementar el servidor backend en **Railway** (Node.js + Express) que recibe la
 | 3.7 | Log estructurado `dispense_triggered` / `mqtt_published` / `mqtt_failed` | **Completado** |
 | 3.8 | URL webhook registrada en Portal MP (modo prueba) | **Completado** |
 | 3.9 | Prueba e2e: pago → webhook → **MQTT** → log | **Completado** |
-| 3.10 | Implementar `POST /orders/create` en el servidor (opcional: reemplazar Postman) | Pendiente |
+| 3.10 | Implementar `POST /orders/create` en el servidor | **Próximo** — bloqueante para POC completa v0.2 |
 
 ### Criterios de aceptación Fase 3
 
@@ -293,6 +297,8 @@ GND común entre ESP32, TXS0108E y PCB Nobana
 
 ## Fase 4 — MQTT + ESP32 → UART Nobana
 
+> **Estado 2026-05-29:** completados **4.1–4.3** y **E2E Railway**. **Próximo:** POC completa **v0.2** (Comprar → QR → pago/timeout). UART Nobana sigue en **4.4+**.
+
 ### Objetivo
 
 Establecer el broker MQTT e implementar en el firmware del Waveshare ESP32-S3 la lógica que, al recibir un comando de dispensado, lo traduce en la trama UART correspondiente y la envía al PCB Nobana a través del TXS0108E.
@@ -303,16 +309,18 @@ Establecer el broker MQTT e implementar en el firmware del Waveshare ESP32-S3 la
 
 | Paso | Tarea | Dependencia | Estado |
 |------|-------|-------------|--------|
-| 4.1 | Levantar broker MQTT (Mosquitto) en el servidor backend | — | Pendiente |
-| 4.2 | Definir topics: `mate/{device_id}/command` (sub), `mate/{device_id}/status` (pub) | — | Pendiente |
-| 4.3 | Implementar cliente MQTT en el firmware Waveshare; suscribirse a `command` | Broker (4.1) | Pendiente |
-| 4.4 | Implementar driver UART2 → TXS0108E → PCB Nobana con los parámetros relevados | Relevamiento UART completo | Pendiente |
-| 4.5 | Al recibir `{ cmd: "dispense", duration_ms }`: enviar comando UART HOT al Nobana y mantenerlo activo durante `duration_ms` | 4.3, 4.4 | Pendiente |
-| 4.6 | Al vencer `duration_ms`: enviar comando UART STOP al Nobana | 4.5 | Pendiente |
-| 4.7 | Publicar estado en `mate/{device_id}/status`: `dispensing`, `idle`, `error` | 4.5 | Pendiente |
-| 4.8 | Implementar watchdog UART: si no hay respuesta del Nobana en N ms, detener dispensado y publicar error | 4.4 | Pendiente |
-| 4.9 | Integrar lectura de temperatura desde el protocolo UART Nobana y publicar en `status` | 4.4 | Pendiente |
-| 4.10 | Prueba de integración end-to-end: mensaje MQTT → comando UART → dispensado real | 4.1–4.8 | Pendiente |
+| 4.1 | Broker MQTT accesible (HiveMQ público POC) | — | **Completado** (servidor WSS + ESP32 TCP 1883) |
+| 4.2 | Topics `mate/{device_id}/command` y `…/status` | — | **Completado** |
+| 4.3 | Firmware Waveshare: Wi‑Fi + MQTT + UI simulada | **Completado** — [`mate_point_v0-1`](mate_point_firmware/mate_point_v0-1/) |
+| 4.3.1 | E2E Railway: pago sandbox → webhook → MQTT → pantalla | **Completado** (2026-05-29) |
+| 4.3.2 | **POC completa v0.2:** Comprar → QR estático → pago / timeout 2 min | **Próximo** — ver § POC completa v0.2 |
+| 4.4 | Driver UART2 → TXS0108E → PCB Nobana | Relevamiento UART completo | Pendiente |
+| 4.5 | `dispense` real: UART HOT durante `duration_ms` | 4.3, 4.4 | Pendiente |
+| 4.6 | Al vencer `duration_ms`: UART STOP | 4.5 | Pendiente |
+| 4.7 | `status` alineado con máquina de estados completa | 4.5 | Parcial (POC publica `idle`/`dispensing`) |
+| 4.8 | Watchdog UART | 4.4 | Pendiente |
+| 4.9 | Temperatura Nobana en `status` | 4.4 | Pendiente |
+| 4.10 | E2E: MQTT → UART → dispensado real | 4.1–4.8 | Pendiente |
 
 ### Diagrama de flujo Fase 4
 
@@ -341,17 +349,113 @@ Backend                  Broker MQTT              Waveshare ESP32-S3
 
 ### Criterios de aceptación Fase 4
 
-- [ ] El broker MQTT responde y acepta conexiones desde el firmware y el backend
-- [ ] El firmware del Waveshare se suscribe al topic `command` y mantiene la conexión activa
-- [ ] Al recibir `cmd: "dispense"` el Waveshare envía la trama UART correcta al PCB Nobana y el dispensador activa el calentador/dispensado
-- [ ] El dispensado se detiene automáticamente al vencer `duration_ms`
-- [ ] El estado `dispensing` / `idle` / `error` se publica correctamente en el topic `status`
-- [ ] El watchdog UART detiene el dispensado y reporta error si el Nobana no responde
-- [ ] La temperatura leída del Nobana se incluye en los mensajes de `status`
+**POC 4.1–4.3 (completado 2026-05-29):**
+
+- [x] Broker HiveMQ accesible desde firmware (TCP 1883) y backend (WSS 8884)
+- [x] Firmware suscrito a `mate/MATEPOINT001/command` y publicando en `…/status`
+- [x] `command` `dispense` → pantalla **Dispensar** → **terminado** → **Listo** según `duration_ms`
+- [x] `status`: heartbeat 30 s + transiciones `dispensing` / `idle` (idle tras 3 s de “terminado”)
+- [x] Dedup por `order_id`
+- [x] **E2E Railway:** pago sandbox → webhook → MQTT → pantalla (4.3.1)
+
+**POC completa v0.2 (4.3.2, próximo):**
+
+- [ ] Botón **Comprar** → crea orden en servidor → muestra QR estático
+- [ ] Pago OK → pantalla **Dispensado** → ciclo terminado → Listo (MQTT existente)
+- [ ] Sin pago en **2 min** → vuelve a **Comprar** + cancelar orden en servidor si aplica
+
+**Fase 4 completa (4.4–4.10, pendiente):**
+
+- [ ] Trama UART HOT/STOP al PCB Nobana
+- [ ] Dispensado físico real durante `duration_ms`
+- [ ] Watchdog UART y temperatura en `status`
+- [ ] E2E: pago MP → MQTT → UART → dispensado
+
+---
+
+## POC completa v0.2 — Comprar → QR → pago
+
+**Objetivo:** cerrar el flujo de negocio en pantalla **sin UART Nobana**: el usuario compra desde la máquina, paga el QR estático de Mercado Pago, y el dispensado sigue siendo **simulado** en UI (como v0.1).
+
+**Firmware objetivo:** [`mate_point_v0-2/`](mate_point_firmware/mate_point_v0-2/) (fork de v0.1).  
+**Spec detallada:** [`mate_point_firmware/PLAN-IMPLEMENTACION.md` §14](mate_point_firmware/PLAN-IMPLEMENTACION.md)
+
+### Flujo acordado
+
+```
+COMPRAR (reposo)
+  │ toque botón "Comprar"
+  ▼
+CREAR_ORDEN ── HTTP POST Railway /orders/create
+  │ OK
+  ▼
+QR_SHOW ── imagen QR estático en pantalla + timer 2 min
+  │
+  ├─ MQTT command (pago OK) ──► DISPENSADO ──► terminado ──► Listo ──► COMPRAR
+  │
+  └─ timeout 2 min ──► cancelar orden (servidor) ──► COMPRAR
+```
+
+### Máquina de estados (UI)
+
+| Estado | Pantalla central | Acción |
+|--------|------------------|--------|
+| `COMPRAR` | Botón **Comprar** (+ footer WiFi/MQTT) | Espera toque |
+| `QR_SHOW` | QR estático (~320 px) + precio opcional | Timer 120 s |
+| `DISPENSADO` | Texto **Dispensado** | `duration_ms` del MQTT |
+| `TERMINADO` | **terminado** | 3 s (igual v0.1) |
+| `LISTO` | **Listo** | Publicar `status: idle` → `COMPRAR` |
+
+> En v0.1 el mensaje durante el timer era **Dispensar**; en v0.2 se usa **Dispensado** tras pago exitoso.
+
+### Dependencias
+
+| Componente | Tarea | Doc |
+|------------|-------|-----|
+| **Servidor** | `POST /orders/create` — crear orden MP `mode: static` | [`servidor-mate-point.md`](servidor-mate-point.md) §5 |
+| **Servidor** | `POST /orders/cancel` (nuevo) — al timeout UI 2 min | Investigar API MP cancel/expiración |
+| **Servidor** | `expiration_time: PT2M` en orden creada desde máquina (alineado UI) | [`integracion-mercadopago-qr.md`](integracion-mercadopago-qr.md) §5.3 |
+| **Firmware** | HTTP client → Railway `/orders/create` al pulsar Comprar | v0.2 |
+| **Firmware** | QR estático en LVGL (PROGMEM o cache HTTP al boot) | [`integracion-mercadopago-qr.md`](integracion-mercadopago-qr.md) §13.1 |
+| **Firmware** | Timer 120 s en `QR_SHOW`; ignorar `command` si no en QR_SHOW | v0.2 |
+| **Existente** | Webhook → MQTT `command` | Fase 3 ✅ |
+
+**QR estático (PNG fijo caja):** URL en [`integracion-mercadopago-qr.md`](integracion-mercadopago-qr.md) §13.1 · POS `MATEPOINT001POS001`.
+
+### Pasos de implementación (orden)
+
+| # | Área | Tarea | Verificación |
+|---|------|-------|--------------|
+| 1 | Servidor | Implementar `POST /orders/create` | Postman / curl → `order_id` |
+| 2 | Servidor | Implementar `POST /orders/cancel` (o documentar expiración MP) | Orden cancelada/expirada tras timeout |
+| 3 | Firmware | Fork `mate_point_v0-2` desde v0.1 | Compila |
+| 4 | Firmware | Pantalla COMPRAR + botón LVGL | Touch OK |
+| 5 | Firmware | HTTP create al tocar Comprar → QR_SHOW | Orden en MP |
+| 6 | Firmware | Mostrar QR estático (PROGMEM recomendado POC) | Escaneable |
+| 7 | Firmware | Timer 2 min → COMPRAR + cancel HTTP | Sin pago, vuelve a reposo |
+| 8 | Firmware | MQTT `dispense` en QR_SHOW → **Dispensado** → ciclo v0.1 | CLI + Railway |
+| 9 | Integración | E2E: Comprar → escanear QR sandbox → **Dispensado** | POC completa |
+
+### Criterios de aceptación POC completa v0.2
+
+- [ ] Usuario ve **Comprar** al arrancar (WiFi/MQTT OK)
+- [ ] Toque **Comprar** crea orden y muestra QR estático
+- [ ] Pago sandbox → webhook → MQTT → **Dispensado** → terminado → Listo → **Comprar**
+- [ ] Sin pago en 2 min → **Comprar** (orden cancelada/expirada en backend)
+- [ ] E2E completo sin Postman manual para crear orden
+
+### Fuera de alcance v0.2
+
+- UART / dispensado físico (4.4+)
+- QR dinámico por MQTT (`qr_show`)
+- NVS / comando serie `wifi`
+- Segundo `dispense` en curso → error UI
 
 ---
 
 ## Fase 5 — Pantalla QR + UX (Waveshare ESP32-S3-Touch-LCD-7B)
+
+> **Estado 2026-05-29:** pasos **5.1** y **5.3** cubiertos en v0.1. **POC completa v0.2** (Comprar + QR) unifica parte de 5.2–5.4 antes del UX final con 5 pantallas.
 
 Corresponde a la integración del módulo de pantalla descrito en `modulo-waveshare-esp32s3-touch-7b.md` y la arquitectura definida en `arquitectura-mate-point.md`.
 
@@ -359,13 +463,13 @@ Corresponde a la integración del módulo de pantalla descrito en `modulo-wavesh
 
 | Paso | Tarea | Dependencia | Estado |
 |------|-------|-------------|--------|
-| 5.1 | Portar LVGL al módulo: hello world + touch test + display encendido | — | Pendiente |
-| 5.2 | Implementar máquina de estados + 5 pantallas con datos hardcodeados | 5.1 | Pendiente |
-| 5.3 | Integrar cliente MQTT; suscribirse a topics y verificar recepción | Broker MQTT (Fase 4) | Pendiente |
-| 5.4 | Mostrar QR estático (imagen descargada al boot por HTTP) | 5.1, Wi-Fi | Pendiente |
-| 5.5 | Integrar QR dinámico: recibir `qr_data` por MQTT y renderizar con `lv_lib_qrcode` | 5.3, 5.4 | Pendiente |
-| 5.6 | Countdown de expiración, cancelación por toque, manejo de errores | 5.2, 5.5 | Pendiente |
-| 5.7 | Ajuste visual final: fuentes, colores, logo, statusbar WiFi/MQTT | 5.2 | Pendiente |
+| 5.1 | Portar LVGL al módulo: hello world + touch test + display encendido | — | **Completado** (demos Waveshare + POC) |
+| 5.2 | Máquina de estados + 5 pantallas con datos hardcodeados | 5.1 | Pendiente (post v0.2) |
+| 5.3 | Cliente MQTT en firmware | Fase 4 POC | **Completado** (v0.1) |
+| 5.4 | QR estático en pantalla | 5.1, Wi-Fi | **En curso** — POC v0.2 §4.3.2 |
+| 5.5 | QR dinámico vía MQTT (`qr_data`) | 5.3, 5.4 | Pendiente |
+| 5.6 | Countdown, cancelación, errores | 5.2, 5.5 | Pendiente |
+| 5.7 | Ajuste visual final | 5.2 | Parcial (footer WiFi/MQTT en POC) |
 
 ### Criterios de aceptación Fase 5
 
@@ -449,3 +553,6 @@ Fase 6 (Producción)
 | 2026-05-27 | Fase 3 definida: deploy Railway (Node.js), broker HiveMQ, `servidor-mate-point.md` |
 | 2026-05-27 | Fase 3 en curso: Railway `mate-point-v1-production`, webhook MP recibe `order.processed` (orden `ORDTST01KSNCYH61MNGYP5Q27G0Y5RJD`) |
 | 2026-05-27 | **Fase 3 completada** — e2e `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ`: `order_fetch_ok` → `dispense_triggered` → `mqtt_published` |
+| 2026-05-29 | **POC Fase 4.1–4.3 completada** — firmware [`mate_point_v0-1`](mate_point_firmware/mate_point_v0-1/) |
+| 2026-05-29 | **E2E Railway cerrado** — pago sandbox → webhook → MQTT → pantalla |
+| 2026-05-29 | **Plan POC completa v0.2** — Comprar → QR estático → pago / timeout 2 min (§ POC completa v0.2) |

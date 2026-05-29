@@ -184,13 +184,22 @@ Alternativas documentadas para versiones posteriores: portal HTML vía SoftAP de
 
 Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 
+> **POC Fase 4 (2026-05-29):** implementados `mate/{device_id}/command` y `mate/{device_id}/status` en firmware [`mate_point_v0-1`](../mate_point_firmware/mate_point_v0-1/). Contrato operativo: [`servidor-mate-point.md`](servidor-mate-point.md) §9 · [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](../mate_point_firmware/PLAN-IMPLEMENTACION.md).
+
 ### 4.1 Tabla de topics
+
+**En uso (POC y servidor):**
+
+| Topic | Dirección | Payload relevante |
+|-------|-----------|-------------------|
+| `mate/{device_id}/command` | Servidor → ESP32 | `cmd: "dispense"`, `duration_ms`, `order_id` |
+| `mate/{device_id}/status` | ESP32 → broker | `state`, `device_id`, `uptime_ms`, `wifi_rssi` |
+
+**Planificados (Fase 5 — prefijo legacy `matepoint/` en diseño original):**
 
 | Topic | Dirección | Payload relevante |
 |-------|-----------|-------------------|
 | `matepoint/{device_id}/qr_show` | Servidor → ESP32 | `qr_data`, `amount`, `expiry_ms` |
-| `matepoint/{device_id}/command` | Servidor → ESP32 | `cmd: "dispense"`, `duration_ms` |
-| `matepoint/{device_id}/status` | ESP32 → Servidor | `state`, `uptime_ms`, `wifi_rssi` |
 | `matepoint/{device_id}/cancel` | Servidor → ESP32 | — (cancela QR activo) |
 
 ### 4.2 Payload `qr_show`
@@ -206,11 +215,27 @@ Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 }
 ```
 
-### 4.3 Payload `status` (ESP32 → Servidor)
+### 4.3 Payload `status` (ESP32 → broker)
+
+**POC v0.1** (`idle` / `dispensing`):
 
 ```json
 {
-  "device_id": "matepoint-001",
+  "device_id": "MATEPOINT001",
+  "state": "dispensing",
+  "ts": 1748368961000,
+  "uptime_ms": 123456,
+  "wifi_rssi": -65,
+  "mqtt_connected": true,
+  "order_id": "ORDTST01..."
+}
+```
+
+**Fase 5 (referencia):**
+
+```json
+{
+  "device_id": "MATEPOINT001",
   "state": "QR_SHOW",
   "uptime_ms": 123456,
   "wifi_rssi": -65,
@@ -220,28 +245,37 @@ Extiende la definición base de `integracion-mercadopago-qr.md` (§8).
 
 ---
 
-## 5. Estructura de archivos — Arduino / PlatformIO
+## 5. Estructura de archivos — firmware
+
+**Implementado (POC v0.1):**
+
+```
+mate_point_firmware/
+├── PLAN-IMPLEMENTACION.md
+├── README.md
+├── reference/                 ← demo 13 Waveshare (backup)
+└── mate_point_v0-1/           ← abrir en Arduino IDE
+    ├── mate_point_v0-1.ino
+    ├── config.h
+    ├── display_ui.h / .cpp
+    ├── dispense_sim.h / .cpp
+    ├── mate_network.h / .cpp
+    └── [port Waveshare: lvgl_port, rgb_lcd, gt911, …]
+```
+
+**Planificado (Fase 5 — referencia):**
 
 ```
 mate_point_display/
-├── platformio.ini              ← o sketch .ino para Arduino
-├── lv_conf.h                   ← config LVGL (resolución, memoria)
+├── lv_conf.h
 ├── src/
-│   ├── main.cpp
-│   ├── config.h                ← broker, device_id; SSID/clave desde NVS
-│   ├── state_machine.cpp       ← lógica de estados
-│   ├── wifi_manager.cpp        ← conexión, reconexión, NVS, comando `wifi`
-│   ├── serial_console.cpp      ← monitor serie 115200, logs de estado/reintentos
-│   ├── mqtt_client.cpp         ← subscribe/publish MQTT
+│   ├── config.h
+│   ├── state_machine.cpp
+│   ├── mqtt_client.cpp
 │   └── ui/
-│       ├── ui.h / ui.cpp       ← inicialización LVGL + pantallas
 │       ├── screen_idle.cpp
-│       ├── screen_requesting.cpp
 │       ├── screen_qr.cpp
-│       ├── screen_dispensing.cpp
-│       └── screen_error.cpp
-└── data/                       ← SPIFFS: logo, fuentes custom
-    └── logo_matepoint.png
+│       └── …
 ```
 
 **Dependencias** (ver también `modulo-waveshare-esp32s3-touch-7b.md` §3.3 y `arquitectura-hardware.md` §3):
@@ -266,3 +300,4 @@ PubSubClient       ← cliente MQTT (o AsyncMQTT)
 | 2026-05-27 | Referencias actualizadas: §2.2 apunta a `arquitectura-hardware.md` §2.3 para comandos UART. Dependencias §5 actualizadas con nuevo `arquitectura-hardware.md` |
 | 2026-05-27 | §3 Configuración Wi-Fi v1: USB-C + monitor serie 115200, comando `wifi`, NVS tras validar, timeout 15 s, logs de reintentos, MQTT al conectar |
 | 2026-05-27 | §3.2: Red y Password se confirman solo con Enter (sin paso `¿Confirmar?`) |
+| 2026-05-29 | §4 topics: separado POC (`mate/…`) vs Fase 5 planificado (`matepoint/…`); §5 apunta a [`mate_point_firmware/mate_point_v0-1/`](../mate_point_firmware/mate_point_v0-1/) |

@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const MP_API_BASE = 'https://api.mercadopago.com';
 
 function getAccessToken() {
@@ -82,13 +84,105 @@ function validateOrderForDispense(order) {
   return { ok: true, reason: 'ok' };
 }
 
-async function createStaticQrOrder(_params) {
-  throw new Error('createStaticQrOrder — pendiente');
+function generateExternalReference(deviceId) {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(now.getUTCDate()).padStart(2, '0');
+  const suffix = crypto.randomBytes(3).toString('hex');
+  const prefix = (deviceId || 'MATEPOINT001').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return `mate-${prefix}-${y}${m}${d}-${suffix}`;
+}
+
+/**
+ * POST /v1/orders — QR estático (§5.3 integracion-mercadopago-qr.md)
+ * @param {{ deviceId?: string, externalReference?: string }} params
+ */
+async function createStaticQrOrder(params = {}) {
+  const amount = normalizeAmount(process.env.MP_SALE_AMOUNT || '500.00');
+  const posId = process.env.MP_EXTERNAL_POS_ID || 'MATEPOINT001POS001';
+  const expiration = process.env.MP_ORDER_EXPIRATION || 'PT2M';
+  const externalReference = params.externalReference
+    || generateExternalReference(params.deviceId);
+
+  const body = {
+    type: 'qr',
+    total_amount: amount,
+    description: 'Agua caliente - 1 porcion',
+    external_reference: externalReference,
+    expiration_time: expiration,
+    config: {
+      qr: {
+        external_pos_id: posId,
+        mode: 'static',
+      },
+    },
+    transactions: {
+      payments: [{ amount }],
+    },
+    items: [
+      {
+        title: 'Agua caliente',
+        unit_price: amount,
+        quantity: 1,
+        unit_measure: 'unit',
+        external_code: 'AGUA001',
+      },
+    ],
+  };
+
+  const res = await fetch(`${MP_API_BASE}/v1/orders`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getAccessToken()}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': crypto.randomUUID(),
+    },
+    body: JSON.stringify(body),
+  });
+
+  const order = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(order.message || `MP API ${res.status}`);
+    err.status = res.status;
+    err.body = order;
+    throw err;
+  }
+  return order;
+}
+
+/**
+ * POST /v1/orders/{id}/cancel — solo status created / action_required
+ * @param {string} orderId
+ */
+async function cancelOrder(orderId) {
+  const res = await fetch(
+    `${MP_API_BASE}/v1/orders/${encodeURIComponent(orderId)}/cancel`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${getAccessToken()}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': crypto.randomUUID(),
+      },
+    },
+  );
+
+  const order = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(order.message || `MP API ${res.status}`);
+    err.status = res.status;
+    err.body = order;
+    throw err;
+  }
+  return order;
 }
 
 module.exports = {
   getOrder,
   validateOrderForDispense,
   createStaticQrOrder,
+  cancelOrder,
+  generateExternalReference,
   normalizeAmount,
 };

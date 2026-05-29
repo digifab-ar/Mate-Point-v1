@@ -19,6 +19,7 @@ Dispensador de agua caliente con pago por **QR estático** de Mercado Pago, back
 | [`arquitectura-mate-point.md`](arquitectura-mate-point.md) | Arquitectura general del sistema |
 | [`arquitectura-hardware.md`](arquitectura-hardware.md) | Hardware, UART Nobana, TXS0108E |
 | [`modulo-waveshare-esp32s3-touch-7b.md`](modulo-waveshare-esp32s3-touch-7b.md) | Pantalla táctil 7" |
+| [`mate_point_firmware/`](mate_point_firmware/) | **Firmware ESP32 POC v0.1** — [`mate_point_v0-1/`](mate_point_firmware/mate_point_v0-1/) |
 | [`dispensador-nobana.md`](dispensador-nobana.md) | Dispensador Nobana |
 
 ---
@@ -31,7 +32,13 @@ Dispensador de agua caliente con pago por **QR estático** de Mercado Pago, back
 | 1 | App MP + sucursal + caja | Completado |
 | 2 | QR estático + pago sandbox | Completado |
 | 3 | Webhook + backend (Railway) + MQTT | Completado |
-| 4–6 | MQTT/ESP32, pantalla, producción | Pendiente |
+| 4 | MQTT + ESP32 (POC 4.1–4.3 + E2E Railway) | **Completado** — [`mate_point_v0-1`](mate_point_firmware/mate_point_v0-1/) |
+| 4 | POC completa v0.2 (Comprar → QR → pago) | **Próximo** — ver [`plan-de-implementacion.md`](plan-de-implementacion.md#poc-completa-v02--comprar--qr--pago) |
+| 4 | UART Nobana (4.4–4.10) | Pendiente |
+| 5 | Pantalla QR + UX | **En curso** — v0.2 cubre Comprar + QR |
+| 6 | Producción MP | Pendiente |
+
+Detalle Fase 4 POC: [`fase-4-plan-4.1-4.3-TEMP.md`](fase-4-plan-4.1-4.3-TEMP.md) · firmware: [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](mate_point_firmware/PLAN-IMPLEMENTACION.md).
 
 Última prueba e2e backend (Fase 3): orden `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` — detalle en [`integracion-mercadopago-qr.md`](integracion-mercadopago-qr.md) §0.2.
 
