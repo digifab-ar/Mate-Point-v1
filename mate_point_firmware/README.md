@@ -7,7 +7,9 @@ Firmware Arduino Fase 4: LVGL + Wi‑Fi + MQTT + simulación de dispensado (sin 
 | [`PLAN-IMPLEMENTACION.md`](PLAN-IMPLEMENTACION.md) | Spec, contrato MQTT, POC v0.2 §14–§15 |
 | [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) | Relevamiento UART Nobana (R1–R3): tramas, cmd, volumen, dispensado |
 | [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) | Plan POC UART: Etapa 1 ESP32+Serial → Etapa 2 integración en v0-2 |
-| [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/) | **POC Etapa 1** — ESP32 maestro Nobana (Coffee, comandos Serial) |
+| [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/) | **POC Etapa 1** — ESP32 maestro Nobana (replay ARMOR `W`→`R`) |
+| [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md) | **POC kiosco** — plan `W` / `S` / `R` (UART v0-2, sin lock final) |
+| [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/) | **POC kiosco** — `W` / `S` / `R` (standby `21`, sin lock `23`) |
 | [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) | Plan temporal Fase 4 POC (cerrado 2026-05-29) |
 | [`plan-de-implementacion.md`](../plan-de-implementacion.md) | Plan general fases 0–6 |
 

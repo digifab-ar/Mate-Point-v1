@@ -12,6 +12,7 @@ Documento de referencia del protocolo observado entre panel ARMOR (BF7612DM28) y
 | Coffee 180 ml (manual) | [`2026-06-03-inicio-dispense-coffee-fin_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin_manual.md) | Igual, corte con **botón Coffee** |
 | **POC ESP — wake manual** | [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md) | ESP maestro: **`W`** → **`R`** → Coffee 180 ml timer → bloqueado |
 | **POC ESP** | [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md) | Misma secuencia UART; procedimiento wake anterior |
+| **POC ESP — tanque vacío** | [`2026-06-04-Water_empty_ESP-UART-v0-2.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Water_empty_ESP-UART-v0-2.md) | Sin agua en tanque; niveles **`b2`** / byte 7 (§4.4) |
 
 | Documento relacionado | Contenido |
 |-----------------------|-----------|
@@ -63,6 +64,18 @@ Capturas [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md`](../to
 | V20 | Wake **`F8`** vía comando **`W`** (manual); **`R`** no reenvía `F8` | §7.6; §9.2 actualizado POC |
 | V21 | Feedback **chime** alineado con ref. ARMOR (§7.7) | 3 + 1 + 1 en ciclo exitoso |
 
+### 0.2.2 Validado — sensor de nivel de tanque (2026-06-04)
+
+Captura [`2026-06-04-Water_empty_ESP-UART-v0-2.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Water_empty_ESP-UART-v0-2.md). Semántica confirmada en banco (correlación sensor físico ↔ UART). Detalle §4.4.
+
+| # | Patrón | Política Nobana | UART NOB→ARM (típico) |
+|---|--------|-----------------|----------------------|
+| V22 | **Nivel bajo** — hay agua en tanque | **Sigue permitiendo** dispensar | **`b2=0x11`**, byte 7 = `00` |
+| V23 | **Tanque vacío** — sensor sin agua | **No permite** dispensar (UI/bloqueo interno) | **`b2=0x10`**, byte 7 = **`0x01`** |
+| V24 | En vacío, **`progress` puede subir** si el maestro fuerza `E2` | Flujo hidráulico ausente; no usar progress como detector de agua | §4.4 |
+
+> **`b2=0x11`** también aparece en **cierre térmico** tras STOP (`§4.3`, capturas jun-03): mismo byte, contexto distinto (fin de ciclo vs aviso de nivel bajo en standby). Priorizar **byte 7** y repetición en poll `21`/`23` para discriminar vacío (§4.4).
+
 ### 0.3 Pendiente de captura (2026-06-03)
 
 Escenarios **no contradichos** por las tres capturas actuales, pero **aún sin log** bajo sniffer + agua en circuito:
@@ -73,7 +86,8 @@ Escenarios **no contradichos** por las tres capturas actuales, pero **aún sin l
 | **Milk**, **Tea**, **Honey** | Bebidas y `d7` distintos |
 | Navegación **volumen** / confirmar preset en UI | `b5=04` fuera del ciclo Coffee ya validado |
 | **Agua natural** (`02`/`22`) y dispense **25 °C** genérico | Sin captura 2026-06-03 |
-| **Lock manual**, **Cooling**, **Water lack** | §11 |
+| **Lock manual**, **Cooling** | §11 |
+| Umbrales exactos del sensor (mm / % tanque) vs `b2` | §4.4 — UART validado; calibración física pendiente |
 | ¿Nobana **requiere** `F8` antes del primer `0x68`? | Sin captura A/B sin `F8` — §9.2 |
 
 ---
@@ -94,6 +108,7 @@ Escenarios **no contradichos** por las tres capturas actuales, pero **aún sin l
 | Patrones de banco | Solo §**0** y §**7** (tres capturas 2026-06-03) |
 | UV | `cmd + 0x20` = misma función con UV care activo (§5.1) |
 | Progress | uint16 BE en bytes 8–9; +7…+11 por tick (~1 s); **no es ml** |
+| Nivel tanque | **`b2=11`** = agua baja (aún dispensa); **`b2=10` + byte7=`01`** = vacío (no dispensa) | §4.4 |
 
 ---
 
@@ -167,9 +182,9 @@ Offset:  0    1     2     3    4    5    6    7    8    9    10
 
 | Campo | Idle | Dispensando / activo |
 |-------|------|----------------------|
-| Byte 2 (`b2`) | `0x12` | `0x12` (activo) / `0x11` (cierre, §4.3) |
+| Byte 2 (`b2`) | `0x12` normal | `0x12` activo; `0x11` nivel bajo o cierre (§4.3–4.4); `0x10` tanque vacío (§4.4) |
 | Bytes 3–4 | `XX 14` (fase); luego `15` en fin timer | byte 3 ≈ °C viva; byte 4 = fase (§4.3) |
-| Bytes 5–7 | `0x00` | `0x00` |
+| Bytes 5–7 | `0x00` | `0x00`; byte 7 = `0x01` si tanque vacío (§4.4) |
 | Bytes 8–9 | `0x0000` | Contador **uint16 BE** (§4.2) |
 | Byte 10 | checksum | checksum |
 
@@ -229,10 +244,39 @@ Patrón **`12 XX YY`** en capturas 2026-06-03 (Coffee 180 ml, agua en circuito):
 | Idle / precalent. (ARM `21`/`23`) | `14` | T_viva en reposo | `NOB→ARM HEX: 68 02 12 29 14 00 00 00 00 00 B9` (13:01:47) |
 | Ciclo caliente (ARM `E2`) | `14` | T_viva → hacia `d7` | `… 68 03 12 2C 14 …` → `… 12 54 14 …` (13:01:50–13:02:14) |
 | Transición fin de ciclo | `15` | Cerca de `d7` | `… 68 03 12 54 15 …` (13:02:14, antes del STOP) |
-| Cierre telemetría | `15` | Cuenta atrás | `b2=11`: `… 68 03 11 4C 15 …` (13:02:18) |
+| Cierre telemetría | `15` | Cuenta atrás | `b2=11`: `… 68 03 11 4C 15 …` (13:02:18) — ver también §4.4 (`b2=11` = nivel bajo) |
 | Idle post-ciclo (`23`) | `15` | Resto térmico | `… 68 05 12 3A 15 …` (13:02:33) |
 
 > En capturas **2026-06-03** **no apareció byte 4 = `13`** en dispensado; dominó **`14`**. El paso a **`15`** se vio en el fin **por timer** (§7.3); en fin **manual** Coffee el corte llegó con byte 4 aún en **`14`** (§7.4).
+
+### 4.4 Sensor de nivel de tanque — `b2` y byte 7
+
+El Nobana reporta el estado del **sensor de agua en el tanque** en el byte 2 de la trama NOB→ARM. El byte 7 complementa el caso **sin agua**. Validado en banco y captura [`2026-06-04-Water_empty_ESP-UART-v0-2.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Water_empty_ESP-UART-v0-2.md) (§0.2.2 V22–V24).
+
+| `b2` | Byte 7 | Sensor / tanque | ¿Dispensa? | Ejemplo HEX (extracto) |
+|------|--------|-----------------|------------|-------------------------|
+| **`0x12`** | `00` | Normal (nivel OK o telemetría de ciclo activo) | Sí | `… 12 29 14 00 00 00 00 00 …` |
+| **`0x11`** | `00` | **Hay agua, nivel bajo** | **Sí** — Nobana **sigue** permitiendo dispensar | `68 01 11 37 14 00 00 00 00 00 C5` (standby poll `21`, T_viva ~55 °C) |
+| **`0x10`** | **`0x01`** | **Sin agua** en tanque | **No** — Nobana **bloquea** dispensado (UI / lógica interna) | `68 01 10 58 14 00 00 01 00 00 E6` |
+
+**Detección sugerida en el maestro (ESP / kiosco):**
+
+```c
+bool nob_tank_empty(const uint8_t *nob_rx_11) {
+    return nob_rx_11[2] == 0x10 && nob_rx_11[7] == 0x01;
+}
+bool nob_tank_low(const uint8_t *nob_rx_11) {
+    return nob_rx_11[2] == 0x11 && nob_rx_11[7] == 0x00;
+}
+```
+
+**Notas de la captura water-empty:**
+
+- Tras un ciclo Coffee con agua residual, el poll standby `21` puede fijar **`b2=11`** (nivel bajo) antes del vacío definitivo.
+- Con tanque vacío, la trama **`10` / `01`** se repite en cada respuesta al poll aunque el maestro envíe `E2` — el Nobana **no** habilita flujo; el contador **progress** (bytes 8–9) **puede incrementarse** si se insiste con `R` sin agua (**no** usar progress como proxy de caudal).
+- En vacío, byte 4 puede permanecer en **`14`** (no pasa a `15`); la alarma de nivel **no** se codifica solo con la fase byte 4.
+
+**Solapamiento con cierre de ciclo (jun-03):** en STOP/cooldown también se vio `b2=11` con T_viva bajando (V15). Ese contexto es **fin térmico de dispensado**; el mismo valor `11` en **standby** con byte 7 = `00` indica **aviso de nivel bajo** con dispensado aún permitido. Si tras varios intentos de `E2` sin caudal aparece **`10`+`01`**, tratar como **vacío** y no reintentar dispensado hasta rellenar tanque.
 
 ---
 
@@ -757,6 +801,8 @@ Correlación UART desde capturas **2026-06-03** — usar **`M texto`** en sniffe
 | Coffee — NOB cierre | NOB→ARM | `68 05 11 53 14 00 00 00 00 00 E5` | 17:38:17 | manual |
 | Post-ciclo bloqueado | ARM→NOB | `68 05 23 00 00 00 00 55 E5` | 13:02:33 | timer |
 | Post-ciclo bloqueado | ARM→NOB | `68 06 23 00 00 00 00 55 E6` | 17:38:29 | manual |
+| Nivel bajo (sensor con agua) | NOB→ARM | `68 01 11 37 14 00 00 00 00 00 C5` | 14:02:31 | water-empty |
+| Tanque vacío (sin agua) | NOB→ARM | `68 01 10 58 14 00 00 01 00 00 E6` | 14:03:43 | water-empty |
 
 ---
 
@@ -773,7 +819,8 @@ Correlación UART desde capturas **2026-06-03** — usar **`M texto`** en sniffe
 | Captura **Milk** / **Tea** / **Honey** con agua en circuito | Media |
 | Navegación volumen y **agua natural** (`02`/`22`) | Media |
 | Correlación **`d7`** con display 888 | Media |
-| Comandos **Cooling**, **Water lack** | Media |
+| Comandos **Cooling** | Media |
+| Calibración física sensor vs umbrales `11` / `10`+`01` | Baja — UART en §4.4 |
 
 ---
 
@@ -811,6 +858,7 @@ Por defecto imprime **FRAME solo si cambia** cmd/datos (ignora `seq` y checksum)
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-06-04 | **§4.4** sensor tanque: `b2=11` nivel bajo (dispensa OK), `b2=10`+byte7=`01` vacío (no dispensa); captura water-empty; §0.2.2 V22–V24; §10.1 |
 | 2026-06-04 | **§7.6–7.7** validación POC ESP32 (capturas 2026-06-04); §0.2.1 V17–V21; `seq` por fase §3.2; chimes y wake manual `W` |
 | 2026-06-03 | §9.2 `0xF8` = wake maestro (ARM→NOB, 1× al encender); §9.3 basura RX; quitado `F8` de apagado; §7.1.1 y tabla §10.1 |
 | 2026-06-03 | Limpieza: eliminados patrones jun-01/02 que contradicen capturas 2026-06-03 (§10.2, stop `02`+`19`, `C2`-only, NOB `13`, puente `22`→`E2`) |
