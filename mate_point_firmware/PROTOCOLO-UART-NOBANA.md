@@ -2,14 +2,16 @@
 
 Documento de referencia del protocolo observado entre panel ARMOR (BF7612DM28) y PCB Nobana.
 
-**Estado:** relevamiento en curso · **2026-06-03**  
-**Fuente:** capturas con [`tools/nobana_uart_sniffer/`](../tools/nobana_uart_sniffer/) (ESP32 NodeMCU 38p + TXS0108E, ARMOR en paralelo). Flujos **inicio**, **Coffee 180 ml** (timer y fin manual) y **apagado** en §7 desde las tres capturas **2026-06-03** (ver §0).
+**Estado:** relevamiento ARM **2026-06-03** · **POC ESP32 maestro validado 2026-06-04** (§7.6)  
+**Fuente:** capturas con [`tools/nobana_uart_sniffer/`](../tools/nobana_uart_sniffer/) — ARMOR en paralelo (jun-03) y ESP32 [`mate_point_UART_v0-1`](mate_point_UART_v0-1/) sustituyendo ARMOR (jun-04).
 
 | Captura | Archivo | Escenario |
 |---------|---------|-----------|
 | Arranque + OFF | [`2026-06-03-inicio-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-fin.md) | ON → idle bloqueado → OFF |
 | Coffee 180 ml (timer) | [`2026-06-03-inicio-dispense-coffee-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin.md) | ON → Coffee → ciclo completo → bloqueado |
 | Coffee 180 ml (manual) | [`2026-06-03-inicio-dispense-coffee-fin_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin_manual.md) | Igual, corte con **botón Coffee** |
+| **POC ESP — wake manual** | [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md) | ESP maestro: **`W`** → **`R`** → Coffee 180 ml timer → bloqueado |
+| **POC ESP** | [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md) | Misma secuencia UART; procedimiento wake anterior |
 
 | Documento relacionado | Contenido |
 |-----------------------|-----------|
@@ -48,6 +50,18 @@ Las tres capturas del **2026-06-03** (tabla superior) son la **única referencia
 | V14 | STOP intermedio timer: **`22` + `b5=04` + `d7=55`** | `68 03 22 00 00 04 00 55 E6` | **No observado** en manual |
 | V15 | NOB al parar: **`b2=11`**, T_viva baja, progress → 0 | 13:02:18 | 17:38:17 |
 | V16 | Post-ciclo: **`23` + `d7=55`** (última bebida) | `68 05 23 … E5` | `68 06 23 … E6` |
+
+### 0.2.1 Validado en POC ESP32 maestro (2026-06-04)
+
+Capturas [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md) y [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md). Firmware [`mate_point_UART_v0-1`](mate_point_UART_v0-1/). Detalle §7.6.
+
+| # | Patrón | Evidencia ESP |
+|---|--------|----------------|
+| V17 | ESP sustituye ARMOR; pines **GPIO25 RX / GPIO17 TX**; polling **~100 ms** | Ambas capturas 2026-06-04 |
+| V18 | **`seq` constante por fase** en polling (`01`+`21`, `02`+`23`, `03`+`E2`, …); sube solo al cambiar fase/comando | Log `[replay] fase=… seq=N` |
+| V19 | Ciclo Coffee timer completo: **B→I** §7.3; `FIN (ciclo_completo)`; dispensado hidráulico OK | Wake manual + replay `R` |
+| V20 | Wake **`F8`** vía comando **`W`** (manual); **`R`** no reenvía `F8` | §7.6; §9.2 actualizado POC |
+| V21 | Feedback **chime** alineado con ref. ARMOR (§7.7) | 3 + 1 + 1 en ciclo exitoso |
 
 ### 0.3 Pendiente de captura (2026-06-03)
 
@@ -128,7 +142,7 @@ Offset:  0    1     2     3    4    5    6    7     8
 | Campo | Descripción |
 |-------|-------------|
 | `0x68` | Header fijo |
-| `seq` | Contador (~100 ms); incrementa en cada frame enviado |
+| `seq` | Identificador de **fase / comando** en el log ref.; **constante** mientras se repite el mismo `cmd` en polling (~100 ms) y **sube** al pasar a la siguiente fase (`01`→`21`, `02`→`23`, `03`→`E2`, …). Validado en POC ESP §7.6 (**no** incrementar `seq` en cada poll) |
 | `cmd` | Modo de agua / bloqueo (§5) |
 | `b3`–`b6` | Payload; ver §5.3 (`b5`) |
 | `d7` | Consigna de temperatura / bebida (§5.2) |
@@ -361,6 +375,8 @@ stateDiagram-v2
 | Elegir Coffee 180 ml | `HEX: 68 03 E2 00 00 00 00 55 A2` (§7.3) | Coffee, chime; luego 85 °C en display |
 | Fin dispensado (timer) | `… 22 … 04 … 55` → `… 22 … 55` → `… 23 … 55` (§7.3) | END, chime |
 | Fin dispensado (botón Coffee) | `E2`+`04` → `22`+`00` → `23`+`55` (§7.4) | END ~3 s tras botón, chime |
+| Bloqueo final post-ciclo | `HEX: 68 05 23 … 55` (§7.3, §7.6) | **1 chime** (POC ESP 2026-06-04) |
+| Wake `F8` solo | `ARM→NOB len=1 F8` (§9.2) | **Sin chime** |
 | Apagado | ceros / `trunc` (sin `F8` observado) (§7.5) | OFF |
 | Confirmar volumen / navegar | §0.3 | — |
 
@@ -560,6 +576,73 @@ Captura `2026-06-03-inicio-fin.md`, tras idle en `23`:
 12:56:10.579  ARM→NOB  FRAME len=4  HEX: 00 00 00 00
 ```
 
+### 7.6 POC ESP32 como maestro UART (2026-06-04)
+
+**Firmware:** [`mate_point_UART_v0-1/mate_point_UART_v0-1.ino`](mate_point_UART_v0-1/mate_point_UART_v0-1.ino)  
+**Plan banco:** [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) §8  
+**Capturas de validación:**
+
+| Archivo | Procedimiento wake | Resultado |
+|---------|-------------------|-----------|
+| [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md) | **`W`** manual → **`R`** | **Referencia operativa** |
+| [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md) | Wake en arranque (firmware anterior) | Ciclo UART OK; mismo guion B→I |
+
+#### Procedimiento banco (wake manual, recomendado)
+
+1. Nobana **OFF** → flashear/conectar ESP32 → Monitor Serie **115200** (esperar `[ready]`).
+2. Nobana **ON** → comando **`W`**: escucha bus **5 s** → **`F8`** (1 B, log TX) → escucha **3 s** (log `NOB->ESP`).
+3. Tras **`[wake] LISTO`** → comando **`R`**: replay **B→I** sin repetir `F8`.
+4. Verificar log: fases `START_21` … `LOCK_23`, `[replay] FIN (ciclo_completo)`, dispensado y corte en panel.
+
+#### Secuencia UART observada (log ESP, wake manual)
+
+| Paso | Hora / fase log | UART / telemetría | UI (observado) |
+|------|-----------------|-------------------|----------------|
+| Wake | `W` → `RX_BOOT` → `POST_F8` | `F8`; RX puede ser solo `00…` (sin `0x68` aún) | Sin chime |
+| Replay B | `START_21` `seq=1` ~4 s | `68 01 21 …` polling | **2 chimes** (desbloqueo) |
+| Replay C | `IDLE_23` `seq=2` ~3 s | `68 02 23 …` polling | Silencio |
+| Replay D | `DISPENSE` `seq=3` ~24 s | `68 03 E2 … 55`; `T_act` 56→**85** °C; `progress` 0→**153** | **1 chime** (Coffee); luego dispensado |
+| Replay E–G | `PRE_STOP` → `STOP_22_04` → `CLOSE` | `E2`+`b5=04`; `22`+`04`; `22`+`00`; **`b2=11`** | **1 chime** (fin / END) |
+| Replay H | `COOLDOWN_22` `seq=4` ~15 s | `22`+`00`; `T_act` baja; `b2` vuelve a `12` | — |
+| Replay I | `LOCK_23` `seq=5` ~3 s | `68 05 23 … 55` | **1 chime** (bloqueo) |
+| Fin | `[replay] FIN (ciclo_completo)` | — | Módulo bloqueado |
+
+**Duración replay** (primera telemetría `START_21` → `FIN`): ~**55 s** en captura wake manual.
+
+**Notas respecto a la ref. ARMOR (2026-06-03):**
+
+| Tema | Ref. ARMOR | POC ESP 2026-06-04 |
+|------|------------|---------------------|
+| `progress` antes de pre-stop | ≥ **155** (`0x9B`) en fase D | A veces **timer 24 s** con `progress` **135–153** en D; ≥155 puede aparecer en **E** |
+| Byte 4 NOB (`fase`) | Pasa a **`15`** en fin timer | Suele permanecer **`14`** en log Serial; hidráulica OK |
+| Respuesta a solo `F8` | Primera `0x68` durante `21` | Tras `W`, ventana post-`F8` puede ser solo `00` — no impide `R` si Nobana ya está ON |
+
+#### Criterio de éxito (ambas capturas 2026-06-04)
+
+- [x] ESP **sin ARMOR** ejecuta guion §7.3 (Coffee 180 ml timer).
+- [x] Dispensado hidráulico comparable a ref.; cierre con `b2=0x11`.
+- [x] `seq` por fase como ref. (`1`…`5` en log firmware).
+- [x] Comandos **`W`** + **`R`** y log archivado en `capturas/`.
+
+### 7.7 Feedback acústico (chime) — correlación UART / UI
+
+El Nobana emite **chimes en transiciones de modo**, no por cada trama de polling (~100 ms). En ciclo Coffee timer **exitoso** (ref. ARMOR §2.1 y POC ESP §7.6):
+
+| # | Cuándo (UI) | Fase / comando maestro | ¿Chime? |
+|---|-------------|------------------------|---------|
+| — | Wake solo `F8` | A′ — 1× `F8` | **No** |
+| 1–2 | Desbloqueo / inicio | B — `0x21` ~4 s (`seq=1`) | **Sí ×2** |
+| — | Idle bloqueado | C — `0x23` ~3 s (`seq=2`) | **No** |
+| 3 | Elegir Coffee | D — primer `0xE2` + `d7=0x55` (`seq=3`) | **Sí ×1** |
+| — | Dispensando (~24 s) | D — polling `E2` + `55` | **No** |
+| 4 | Fin dispensado / END | E → F → G — `E2`+`04`, `22`+`04`, `22`+`00`, `b2→11` | **Sí ×1** |
+| — | Cooldown (~15 s) | H — `22`+`00` | **No** (salvo percepción unida al corte) |
+| 5 | Bloqueo final | I — `0x23` + `d7=0x55` (`seq=5`) | **Sí ×1** |
+
+**Total típico en ciclo OK:** **5 chimes** (o **3** al inicio si los dos primeros se perciben como grupo + 1 + 1).
+
+**Polling sin chime:** repetir la **misma** trama (`68 01 21 …`, `68 03 E2 … 55`, etc.) con el **mismo `seq`** no produce beeps adicionales — condición necesaria para el POC (§0.2.1 V18).
+
 ---
 
 ## 8. Observaciones empíricas — timer ARMOR
@@ -568,7 +651,8 @@ Duraciones con **agua en circuito**. Solo las filas **2026-06-03** están alinea
 
 | Preset UI | Bebida | Duración ~ | Progress al STOP | UART / captura |
 |-----------|--------|------------|------------------|----------------|
-| **180 ml** | Coffee | **~28 s** | **`0x009B` (155)** | Validado — §7.3 |
+| **180 ml** | Coffee | **~28 s** | **`0x009B` (155)** | Validado — §7.3 (ARMOR) |
+| **180 ml** | Coffee | **~24 s** activo D | **135–161** (timer o E) | Validado — §7.6 (ESP POC) |
 | **180 ml** | Coffee (manual) | **~14 s** activo | **~93** (`00 5D`) | Validado — §7.4 |
 | 250 ml | Coffee | ~33 s *(hist.)* | ~227 *(hist.)* | Pendiente §0.3 |
 | 450 ml | Coffee | ? | ? | Pendiente §0.3 |
@@ -606,7 +690,7 @@ ARM→NOB  FRAME len=1  HEX: F8
 |-----|-------------|
 | **Sniffer / log** | Mostrar como frame de **1 B**; no mezclar con `WARN trunc` de ceros |
 | **Parser RX (ESP)** | Si llega `F8` en NOB→ARM: **ignorar** (no observado en capturas) |
-| **Maestro (ARMOR / ESP POC)** | Tras ignorar basura RX, **emitir `0xF8` una vez**, esperar ~150–200 ms (o un tick de poll), luego **`68 01 21 …`** — ver [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) fase A′ |
+| **Maestro (ARMOR / ESP POC)** | Tras ignorar basura RX, **emitir `0xF8` una vez** (en POC: comando **`W`**, §7.6), esperar ~150–200 ms, luego **`68 01 21 …`** en replay **`R`** — ver [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) |
 | **Checksum / `seq`** | **No aplica** — no es trama de 9 B con header `0x68` |
 
 **No confirmado:** que el Nobana **rechace** el bus si se omite `F8` (falta captura sin ese byte). En banco: probar replay con y sin `F8` antes de cerrar POC.
@@ -727,6 +811,7 @@ Por defecto imprime **FRAME solo si cambia** cmd/datos (ignora `seq` y checksum)
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-06-04 | **§7.6–7.7** validación POC ESP32 (capturas 2026-06-04); §0.2.1 V17–V21; `seq` por fase §3.2; chimes y wake manual `W` |
 | 2026-06-03 | §9.2 `0xF8` = wake maestro (ARM→NOB, 1× al encender); §9.3 basura RX; quitado `F8` de apagado; §7.1.1 y tabla §10.1 |
 | 2026-06-03 | Limpieza: eliminados patrones jun-01/02 que contradicen capturas 2026-06-03 (§10.2, stop `02`+`19`, `C2`-only, NOB `13`, puente `22`→`E2`) |
 | 2026-06-03 | §0 validado vs pendiente; §7.4 Coffee fin manual; §7.5 apagado; pre-stop `E2`+`b5=04`; timer `22`+`b5=04`→`22`+`b5=00` |

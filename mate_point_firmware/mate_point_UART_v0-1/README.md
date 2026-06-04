@@ -37,11 +37,11 @@ Ver [`PLAN-POC-NOBANA-UART.md`](../PLAN-POC-NOBANA-UART.md) y [`PROTOCOLO-UART-N
 
 ### Procedimiento banco
 
-1. Nobana **OFF** → flashear/conectar ESP32 → abrir Monitor **115200**
-2. **Nobana ON** durante los primeros 5 s (wake escucha RX; luego envía **F8** y loguea 3 s más)
-3. Esperar **`[wake] LISTO`** — revisar líneas `NOB->ESP` — enviar **`R`**
-4. Verificar: fases `START_21` … `LOCK_23`, `progress` ≥ 155, `b2=0x11`
-5. Si Nobana se encendió tarde: **`W`** (repetir wake) y luego **`R`**
+1. Nobana **OFF** → flashear/conectar ESP32 → Monitor **115200** (esperar `[ready]`)
+2. **Nobana ON** → enviar **`W`** (escucha 5 s → **F8** → log 3 s)
+3. Esperar **`[wake] LISTO`** — revisar `NOB->ESP` — enviar **`R`**
+4. Verificar: fases `START_21` … `LOCK_23`, `progress`, `b2=0x11`
+5. Repetir **`W`** si hace falta antes de **`R`**
 
 ## Secuencia replay (resumen)
 

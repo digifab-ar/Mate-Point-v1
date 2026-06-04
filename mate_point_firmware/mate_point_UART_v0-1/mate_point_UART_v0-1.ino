@@ -8,7 +8,7 @@
  *
  * Monitor USB: 115200 | Bus Nobana: 9600 8N1
  *
- * Arranque: wake automático (F8 + log RX) → luego R = replay 21→23→E2…
+ * Wake manual: comando W (F8 + log RX) → luego R = replay 21→23→E2…
  * Ver: PLAN-POC-NOBANA-UART.md, PROTOCOLO-UART-NOBANA.md
  */
 
@@ -37,6 +37,7 @@
 #define NOBANA_NOB_B2_ACTIVE 0x12
 #define NOBANA_NOB_B2_CLOSE 0x11
 
+#define SETUP_USB_SETTLE_MS 2000
 #define HANDSHAKE_T_RX_BOOT_MS 5000
 #define HANDSHAKE_T_POST_F8_MS 3000
 #define REPLAY_T_WAKE_DELAY_MS 170
@@ -51,6 +52,7 @@
 #define REPLAY_PROGRESS_STOP 155
 
 enum HandshakePhase {
+    HS_IDLE,
     HS_RX_BOOT,
     HS_POST_F8,
     HS_READY,
@@ -85,7 +87,7 @@ struct NobanaTelemetry {
 };
 
 static ReplayPhase s_replay = REPLAY_OFF;
-static HandshakePhase s_hs = HS_RX_BOOT;
+static HandshakePhase s_hs = HS_IDLE;
 static uint8_t s_seq = 1;
 static uint32_t s_bus_baud = NOBANA_BAUD_DEFAULT;
 static uint32_t s_phase_start_ms = 0;
@@ -130,6 +132,8 @@ static const char *replay_phase_name(ReplayPhase p)
 static const char *handshake_phase_name(HandshakePhase p)
 {
     switch (p) {
+    case HS_IDLE:
+        return "IDLE";
     case HS_RX_BOOT:
         return "RX_BOOT";
     case HS_POST_F8:
@@ -352,7 +356,7 @@ static void handshake_mark_ready()
                   (unsigned long)s_hs_rx_bytes, (unsigned long)s_hs_valid_frames);
     if (s_hs_valid_frames == 0) {
         Serial.println("[wake] Sin trama 0x68 valida tras F8.");
-        Serial.println("[wake] Si Nobana estaba OFF: encenderlo, pulsar W, revisar log, luego R.");
+        Serial.println("[wake] Repetir W con Nobana ON o revisar cableado/baud.");
     } else {
         Serial.println("[wake] Revisar lineas NOB->ESP arriba. Cuando OK, enviar R en Monitor.");
     }
@@ -363,7 +367,11 @@ static void handshake_mark_ready()
 static void handshake_begin()
 {
     if (s_replay != REPLAY_OFF) {
-        Serial.println("[err] Abortar replay (X) antes de repetir wake");
+        Serial.println("[err] Abortar replay (X) antes de wake (W)");
+        return;
+    }
+    if (s_hs == HS_RX_BOOT || s_hs == HS_POST_F8) {
+        Serial.println("[err] Wake en curso, espere [wake] LISTO");
         return;
     }
 
@@ -381,12 +389,12 @@ static void handshake_begin()
     Serial.println("[wake] INICIO — escuchando bus antes de F8");
     Serial.printf("[wake] fase=%s (%u ms)\n", handshake_phase_name(s_hs),
                   (unsigned)HANDSHAKE_T_RX_BOOT_MS);
-    Serial.println("[wake] En estos 5 s: encender Nobana (ver NOB->ESP raw/ok en log)");
+    Serial.println("[wake] Encender Nobana si aun OFF; ver NOB->ESP en log");
 }
 
 static void handshake_tick(uint32_t now)
 {
-    if (s_hs == HS_READY) {
+    if (s_hs == HS_IDLE || s_hs == HS_READY) {
         return;
     }
 
@@ -474,7 +482,7 @@ static void replay_start()
         return;
     }
     if (!s_wake_ready) {
-        Serial.println("[err] Wake no listo. Espere [wake] LISTO o pulse W tras Nobana ON.");
+        Serial.println("[err] Wake no listo. Nobana ON -> W -> [wake] LISTO -> R");
         return;
     }
 
@@ -629,14 +637,14 @@ static void print_banner()
     Serial.println("=== Mate Point UART v0-1 — wake + replay ===");
     Serial.printf("USB %d | Bus %lu 8N1 | Poll %d ms | ARMOR OFF\n", SERIAL_DEBUG_BAUD,
                   (unsigned long)NOBANA_BAUD_DEFAULT, NOBANA_POLL_MS);
-    Serial.println("Al arrancar: wake auto (F8 + log RX). Luego R = replay.");
+    Serial.println("Wake manual: W (F8 + log). Luego R = replay.");
 }
 
 static void print_help()
 {
     Serial.println();
     Serial.println("Comandos (Enter):");
-    Serial.println("  W           repetir wake (F8 + log RX, 2s+3s)");
+    Serial.println("  W           wake manual: escucha 5s -> F8 -> log 3s");
     Serial.println("  R           replay 21->23->E2... (tras [wake] LISTO)");
     Serial.println("  X           abortar replay");
     Serial.println("  S           detener replay (fin anticipado)");
@@ -675,7 +683,10 @@ static void handle_serial_line(String line)
         }
         uart_begin_bus((uint32_t)baud);
         line_reset(&s_rx);
-        handshake_begin();
+        s_hs = HS_IDLE;
+        s_wake_ready = false;
+        s_handshake_rx_log = false;
+        Serial.println("[cfg] Baud cambiado. Pulse W (wake) antes de R.");
         return;
     }
 
@@ -746,7 +757,7 @@ static void poll_usb_serial()
 void setup()
 {
     Serial.begin(SERIAL_DEBUG_BAUD);
-    delay(300);
+    delay(SETUP_USB_SETTLE_MS);
 
     memset(&s_rx, 0, sizeof(s_rx));
     memset(&s_telem, 0, sizeof(s_telem));
@@ -755,7 +766,7 @@ void setup()
     uart_begin_bus(NOBANA_BAUD_DEFAULT);
     print_banner();
     print_help();
-    handshake_begin();
+    Serial.println("[ready] Monitor listo. Nobana ON -> W -> revisar log -> R");
 }
 
 void loop()

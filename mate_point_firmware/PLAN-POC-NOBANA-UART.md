@@ -2,14 +2,15 @@
 
 **Proyecto:** Mate Point — OT-00268 Etapa 3  
 **Objetivo:** validar comunicación **maestro** con el PCB Nobana, luego integrar el driver en **`mate_point_v0-2`**.  
-**Última actualización:** 2026-06-03  
-**Estado:** **Etapa 1 en repo** — [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/) — **replay §4 implementado** (validar en banco con `R`)
+**Última actualización:** 2026-06-04  
+**Estado:** **Etapa 1 cerrada en banco** — [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/) — replay §4 validado (capturas ESP 2026-06-04)
 
 | Documento | Contenido |
 |-----------|-----------|
-| [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) | Análisis de la captura ref. §7.3 |
-| **Captura ref. Etapa 1** | [`2026-06-03-inicio-dispense-coffee-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin.md) |
-| Otras capturas | `inicio-fin`, `…_manual` — **fuera de alcance Etapa 1** hasta cerrar replay ref. |
+| [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) | Protocolo §7 + **§7.6–7.7** validación ESP |
+| **Captura ref. (ARMOR)** | [`2026-06-03-inicio-dispense-coffee-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin.md) |
+| **Capturas POC ESP (validación)** | [`2026-06-04-…_ESP-UART_Wake_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md) (procedimiento **`W`→`R`**) · [`2026-06-04-…_ESP-UART.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md) |
+| Otras capturas | `inicio-fin`, `…_manual` — Etapa 1b |
 | [`tools/nobana_uart_sniffer/`](../tools/nobana_uart_sniffer/) | Sniffer y cableado |
 
 ---
@@ -35,15 +36,17 @@
 | Elegir Coffee | **1 chime**; tras unos segundos empieza dispensado |
 | Dispensando | Display **85 °C** |
 | Fin | **END** + **1 chime**; vuelve bloqueado |
+| Lock final | **1 chime** (POC ESP 2026-06-04, §PROTOCOLO 7.7) |
 
-Preset **180 ml** (RAM del ARMOR; **no** va por UART).
+Preset **180 ml** (RAM del ARMOR; **no** va por UART). Detalle chimes: [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) §7.7.
 
 ### 2.2 Objetivo técnico POC
 
 Reproducir en el Nobana la **misma secuencia de tramas ARM→NOB** y leer telemetría NOB→ARM equivalente, con:
 
 - Polling **~100 ms** entre envíos (como en el log).
-- **`seq`** incrementado en **cada** frame TX (en la ref.: `01`→`21`, `02`→`23`, `03`→`E2`, … `05`→`23` al final).
+- **`seq` constante por fase** en el polling; sube al cambiar comando/fase (`01`+`21`, `02`+`23`, `03`+`E2`, … `05`+`23` al final). **No** incrementar `seq` en cada poll (validado ESP 2026-06-04).
+- Wake **`F8`** solo con comando **`W`**; replay **`R`** ejecuta fases **B→I** sin repetir `F8`.
 - Duraciones por fase tomadas del log (§4.2); disparo de pre-stop/fin por **tiempo** o por **progress ≥ 155** (`0x9B`), como en la ref.
 
 ### 2.3 Fuera de alcance Etapa 1 (hasta cerrar §9)
@@ -91,9 +94,11 @@ Análisis detallado: PROTOCOLO §7.1–7.3.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> RX_BOOT: Nobana ON
-    RX_BOOT --> WAKE_F8: RX estable
-    WAKE_F8 --> START_21: 1x F8
+    [*] --> HS_IDLE: ESP listo
+    HS_IDLE --> RX_BOOT: comando W
+    RX_BOOT --> POST_F8: escucha 5 s
+    POST_F8 --> HS_READY: F8 + escucha 3 s
+    HS_READY --> START_21: comando R
     START_21 --> IDLE_23: ~4 s
     IDLE_23 --> DISPENSE: ~3 s
     DISPENSE --> PRE_STOP: ~24 s o progress>=155
@@ -106,8 +111,8 @@ stateDiagram-v2
 
 | Fase | `cmd` | `b5` | `d7` | Duración ref. | Trama tipo (seq ej.) |
 |------|-------|------|------|---------------|----------------------|
-| **A** `RX_BOOT` | — | — | — | hasta línea estable | Ignorar RX: `WARN trunc`, ráfagas `00…` |
-| **A′** `WAKE_F8` | — | *(1 B)* | — | **1×** tras A | **`F8`** ARM→NOB — ver §4.1.1 |
+| **A** `RX_BOOT` | — | — | — | **5 s** (comando **`W`**) | Ignorar RX: `WARN trunc`, ráfagas `00…`; log `NOB->ESP` |
+| **A′** `POST_F8` | — | *(1 B)* | — | **F8** + **3 s** escucha | **`F8`** ESP→NOB — ver §4.1.1; luego `[wake] LISTO` |
 | **B** `START_21` | `0x21` | `00` | `00` | **~4,0 s** (43,2→47,0) | `68 01 21 00 00 00 00 00 8A` |
 | **C** `IDLE_23` | `0x23` | `00` | `00` | **~3,0 s** (47,0→50,0) | `68 02 23 00 00 00 00 00 8D` |
 | **D** `DISPENSE` | `0xE2` | `00` | `0x55` | **~24 s** (50,0→14,0) | `68 03 E2 00 00 00 00 55 A2` |
@@ -134,9 +139,9 @@ En las **tres** capturas 2026-06-03, tras los bloques de `0x00` al encender y **
 | Precede al protocolo `0x68` | Inmediatamente después viene `68 01 21 …` |
 | **No** hay respuesta Nobana solo a `F8` | La primera trama NOB válida llega durante el polling `21` |
 
-**Conclusión:** `0xF8` no es ruido aleatorio; es un **byte de arranque / wake** del firmware del panel hacia el Nobana. En el replay, el ESP debe emitir **`F8` una vez** (fase **A′**) y luego fase **B**, igual que la captura ref.
+**Conclusión:** `0xF8` no es ruido aleatorio; es un **byte de arranque / wake** del maestro hacia el Nobana. En el POC, **`W`** ejecuta A+A′; **`R`** inicia en **B** sin repetir `F8`.
 
-**No confirmado aún:** que el Nobana **requiera** `F8` para aceptar `0x68` (no hay captura sin `F8`). Si en banco falla el replay, probar omitir A′ y documentar.
+**POC ESP (2026-06-04):** tras `F8` la ventana de 3 s puede mostrar solo `00` (sin `0x68`); el replay **`R`** igualmente completó el ciclo si Nobana ya estaba ON. Procedimiento: Nobana ON → **`W`** → revisar log → **`R`**.
 
 **Notas del log:**
 
@@ -218,7 +223,7 @@ Verbose `V`: imprimir `ESP->NOB` / `NOB->ESP` HEX como el sniffer.
 
 ### 4.5 Firmware
 
-[`mate_point_UART_v0-1.ino`](mate_point_UART_v0-1/mate_point_UART_v0-1.ino) implementa la FSM §4.1 y comando **`R`**. Pendiente: validación en banco §8.
+[`mate_point_UART_v0-1.ino`](mate_point_UART_v0-1/mate_point_UART_v0-1.ino) implementa wake (**`W`**) + replay (**`R`**) §4.1. **Validado en banco** 2026-06-04 — §8 y capturas ESP.
 
 ---
 
@@ -229,7 +234,9 @@ mate_point_firmware/mate_point_UART_v0-1/
 └── mate_point_UART_v0-1.ino   ← replay_capture_ref() + serial_cli
 
 tools/nobana_uart_sniffer/capturas/
-└── 2026-06-03-inicio-dispense-coffee-fin.md   ← especificación
+├── 2026-06-03-inicio-dispense-coffee-fin.md              ← especificación ARMOR
+├── 2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md  ← validación ESP (W→R)
+└── 2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md     ← validación ESP
 ```
 
 | Módulo | Función |
@@ -246,16 +253,19 @@ tools/nobana_uart_sniffer/capturas/
 | Comando | Acción |
 |---------|--------|
 | `?` / `h` | Ayuda |
-| **`R`** | **Replay completo** captura ref. (§4.1 A→I). Comando principal. |
-| `B9600` | Baud bus (default 9600) |
+| **`W`** | **Wake manual:** escucha 5 s → **`F8`** → log RX 3 s → `[wake] LISTO` |
+| **`R`** | **Replay** captura ref. (§4.1 **B→I**). Tras `[wake] LISTO`. No reenvía `F8`. |
+| `B9600` | Baud bus (default 9600); requiere **`W`** de nuevo |
 | `V` | Verbose HEX |
 | `I` | Estado FSM + última telemetría |
-| `X` | Abortar replay → `IDLE` |
+| `X` | Abortar replay |
 | `S` | Detener replay en fase actual *(debug)* |
 
-**Reservados (Etapa 1b, tras cerrar `R`):** `D<ms>`, `T`, `M`, `U` — no son el criterio de aceptación de esta fase.
+**Reservados (Etapa 1b):** `D<ms>`, `T`, `M`, `U`.
 
-Al pulsar **`R`**: reset `seq` (primer TX ref. usa `seq=1` con `cmd=21`), ejecutar B→I sin intervención.
+**Secuencia banco:** Nobana OFF → ESP on → Monitor 115200 → Nobana ON → **`W`** → **`R`**.
+
+Al pulsar **`R`**: `seq=1` en fase B; **`seq` fijo** en cada fase durante el polling; ejecutar B→I sin intervención.
 
 ---
 
@@ -269,8 +279,8 @@ Al pulsar **`R`**: reset `seq` (primer TX ref. usa `seq=1` con `cmd=21`), ejecut
 | 4 | Fase **D** `E2`+`55`, fin por progress≥155 o 24 s | Progress sube; T_viva → ~84 |
 | 5 | Fases **E**–**G** (pre-stop → `22`+04 → `22`+00, ver `b2=11`) | HEX como 13:02:14–18 |
 | 6 | Fases **H**–**I** (cooldown `22`, luego `23`+`55`) | `68 05 23 … 55` ~13:02:33 |
-| 7 | Comando **`R`** + log §4.4 | Una pasada completa en banco con agua |
-| 8 | Captura **`2026-06-03-esp-poc-coffee-180ml-replay.md`** | Comparar HEX con ref.; archivar en `capturas/` |
+| 7 | Comandos **`W`** + **`R`** + log §4.4 | Una pasada completa en banco con agua |
+| 8 | Capturas ESP **2026-06-04** en `capturas/` | Comparar telemetría con ref. §7.3 |
 
 ### Etapa 2 — Waveshare (tras §9)
 
@@ -280,17 +290,23 @@ Port de `replay_ref_fsm` / driver a `mate_point_v0-2` + MQTT `duration_ms` + UI 
 
 ## 8. Criterios de aceptación — Etapa 1
 
-La Etapa 1 se considera cerrada cuando el ESP, **sin ARMOR**, ejecuta **`R`** y en banco con agua:
+**Cerrada 2026-06-04** con capturas ESP (banco con agua, wake manual recomendado).
 
-- [ ] **A′:** un byte **`F8`** TX antes del primer `0x68` (como captura ref.).
-- [ ] **B:** polling `21` ~4 s; NOB responde `12 xx 14`.
-- [ ] **C:** polling `23` ~3 s; idle como ref. (`12 29 14`, progress `0`).
-- [ ] **D:** `E2`+`d7=55`+`b5=00` ~24 s; T_viva sube; progress alcanza **≥155** antes del pre-stop.
-- [ ] **E:** `E2`+`b5=04` ~3,9 s; byte 4 NOB → `15`.
-- [ ] **F–G:** un `22`+`b5=04`; luego `22`+`b5=00`; NOB `b2=11` y T_viva baja.
-- [ ] **H–I:** `22`+`00` ~15 s; luego `23`+`d7=55` (última bebida).
-- [ ] Efecto hidráulico: dispensado comparable a Coffee 180 ml ref. (agua corre y para).
-- [ ] Captura ESP archivada y revisada frente a [`2026-06-03-inicio-dispense-coffee-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin.md).
+| ID | Criterio | Estado | Evidencia |
+|----|----------|--------|-----------|
+| A′ | **`F8`** TX vía **`W`** antes del primer `0x68` en replay | [x] | [`2026-06-04-…_Wake_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md) — `ESP->NOB F8` |
+| B | Polling `21` ~4 s; NOB `12 xx 14` | [x] | `START_21`, `T_act`, `b2=0x12`, `fase=0x14` |
+| C | Polling `23` ~3 s; idle | [x] | `IDLE_23` ~3 s |
+| D | `E2`+`55` ~24 s; T_viva → ~85 °C; progress sube | [x] | `T_act` 56→85; `progress` 0→153+ |
+| E | `E2`+`b5=04` ~3,9 s | [x] | `PRE_STOP` en log |
+| E′ | byte 4 NOB → `15` | [~] | En ESP log suele quedar `14`; hidráulica OK |
+| F–G | `22`+`04` → `22`+`00`; `b2=11`; T_viva baja | [x] | `b2=0x11` en `CLOSE` |
+| H–I | cooldown ~15 s; `23`+`d7=55` | [x] | `COOLDOWN_22`, `LOCK_23` `seq=5` |
+| — | Dispensado ~180 ml ref. | [x] | Observable en ambas capturas 2026-06-04 |
+| — | Chimes alineados §7.7 | [x] | 3 inicio + fin + lock |
+| — | Capturas archivadas | [x] | Wake_manual + ESP-UART |
+
+Referencia cruzada: [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) §7.6–7.7 · ARMOR ref. [`2026-06-03-inicio-dispense-coffee-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin.md).
 
 ---
 
@@ -298,10 +314,10 @@ La Etapa 1 se considera cerrada cuando el ESP, **sin ARMOR**, ejecuta **`R`** y 
 
 | Riesgo | Mitigación |
 |--------|------------|
-| Nobana ya encendido / estado distinto al del log | Procedimiento banco: **OFF** Nobana → flash ESP → **`R`** con Nobana que pase por basura RX fase A |
-| Tiempos sin agua no coinciden con ref. | Criterio UART (tramas + telemetría); tiempos ±20 % aceptables en hidráulica |
-| `seq` / checksum incorrectos | Tests unitarios `build_tx_9` contra tabla §4.1 |
-| Solo replay ref. validado | Manual / otros ml: **Etapa 1b** tras §8 |
+| Wake sin trama `0x68` tras `F8` | Nobana **ON** antes de **`W`**; repetir **`W`**; **`R`** tras `[wake] LISTO` (§7.6) |
+| Tiempos / `progress` vs ref. ARMOR | Criterio hidráulico + telemetría; fin D por timer 24 s aceptado en banco ESP |
+| `seq` por poll (incorrecto) | Firmware v0-1: **seq fijo por fase** — resuelto 2026-06-04 |
+| Solo Coffee 180 ml timer validado | Manual / otros ml: **Etapa 1b** |
 
 **Pendiente explícito (no bloquea Etapa 1 si `R` cumple §8):**
 
@@ -323,9 +339,10 @@ Integrar el driver validado en `mate_point_v0-2`: misma semántica de tramas (`E
 |---|----------|
 | 1 | Etapa 1 = **replay exacto** de `2026-06-03-inicio-dispense-coffee-fin.md` |
 | 2 | ESP sustituye ARMOR; pines **25 RX / 17 TX** (igual sniffer en Nobana Tx) |
-| 3 | Comando principal **`R`**; `D`/`T`/`M` pasan a Etapa 1b |
+| 3 | Wake **`W`** + replay **`R`**; `D`/`T`/`M` pasan a Etapa 1b |
 | 4 | Fin dispensado = timer ref. (**progress ≥ 155** + pre-stop **~3,9 s** + `22`+04→00→`23`) |
 | 5 | Otras capturas 2026-06-03 **no** son criterio de cierre de Etapa 1 |
+| 6 | Etapa 1 **cerrada** 2026-06-04 — capturas ESP en `capturas/` |
 
 ---
 
@@ -336,4 +353,5 @@ Integrar el driver validado en `mate_point_v0-2`: misma semántica de tramas (`E
 | 2026-06-03 | Documento inicial |
 | 2026-06-03 | Alineación capturas 2026-06-03; `E2`/`22`/`23` |
 | 2026-06-03 | **Etapa 1 acotada a replay** `inicio-dispense-coffee-fin.md`: §4 guion A–I, tiempos, `R`, criterios §8; manual/otros fuera de alcance |
+| 2026-06-04 | **Etapa 1 cerrada:** validación banco ESP (capturas 2026-06-04); wake manual **`W`**; §8 criterios [x]; PROTOCOLO §7.6–7.7 |
 | 2026-06-03 | §4.1.1: `0xF8` = wake maestro (ARM→NOB), no basura; fase A′ en replay ESP |
