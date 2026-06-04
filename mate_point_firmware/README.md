@@ -5,6 +5,9 @@ Firmware Arduino Fase 4: LVGL + Wi‑Fi + MQTT + simulación de dispensado (sin 
 | Documento | Contenido |
 |-----------|-----------|
 | [`PLAN-IMPLEMENTACION.md`](PLAN-IMPLEMENTACION.md) | Spec, contrato MQTT, POC v0.2 §14–§15 |
+| [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) | Relevamiento UART Nobana (R1–R3): tramas, cmd, volumen, dispensado |
+| [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) | Plan POC UART: Etapa 1 ESP32+Serial → Etapa 2 integración en v0-2 |
+| [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/) | **POC Etapa 1** — ESP32 maestro Nobana (Coffee, comandos Serial) |
 | [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) | Plan temporal Fase 4 POC (cerrado 2026-05-29) |
 | [`plan-de-implementacion.md`](../plan-de-implementacion.md) | Plan general fases 0–6 |
 
@@ -50,6 +53,7 @@ Pruebas CLI: [`PLAN-IMPLEMENTACION.md` §8](PLAN-IMPLEMENTACION.md) · POC v0.2:
 mate_point_firmware/
 ├── README.md
 ├── PLAN-IMPLEMENTACION.md
+├── PROTOCOLO-UART-NOBANA.md   ← relevamiento bus Nobana (R3)
 ├── reference/              ← backup demo 13 Waveshare
 ├── mate_point_v0-2/          ← POC Comprar + QR + HTTP órdenes
 │   ├── app_state.*

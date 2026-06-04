@@ -4,10 +4,10 @@
 **Alcance v0.1:** Wi‑Fi + MQTT + UI LVGL simulada. **Sin UART Nobana**, sin botón Comprar/QR (v0.2).  
 **Base hardware:** Waveshare ESP32-S3-Touch-LCD-7B  
 **Device ID:** `MATEPOINT001`  
-**Última actualización decisiones:** 2026-05-29  
-**Estado:** **POC v0.1 completado** · **POC v0.2 implementado** · **Pendiente: validación E2E en hardware** (Comprar → QR → pago)
+**Última actualización decisiones:** 2026-06-03  
+**Estado:** **POC v0.1 completado** · **POC v0.2 completado** (E2E hardware validado 2026-06-03)
 
-Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js)
+Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js)
 
 ---
 
@@ -22,13 +22,13 @@ Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · 
 | Dedup `order_id` | OK |
 | UART Nobana | Fuera de alcance |
 | E2E Railway (pago → pantalla) | **Completado** (2026-05-29) |
-| POC v0.2 (Comprar + QR) | **Implementado** — §14 · §15 |
+| POC v0.2 (Comprar + QR) | **Completado** (E2E hardware 2026-06-03) — §14 · §15 |
 
 **Abrir en Arduino:** [`mate_point_v0-1/mate_point_v0-1.ino`](mate_point_v0-1/mate_point_v0-1.ino)
 
 ---
 
-## Estado v0.2 (2026-05-29)
+## Estado v0.2 (2026-06-03)
 
 | Ítem | Estado |
 |------|--------|
@@ -39,7 +39,7 @@ Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · 
 | Timer 2 min + cancel en timeout | OK (`QR_TIMEOUT_MS`) |
 | MQTT `dispense` solo en `QR_SHOW` | OK |
 | UI **Dispensado** → terminado → Listo | OK (hereda v0.1) |
-| **E2E hardware** (escaneo QR + pago sandbox) | **Pendiente validación** |
+| **E2E hardware** (escaneo QR + pago sandbox) | **Completado** (2026-06-03) |
 
 **Abrir en Arduino:** [`mate_point_v0-2/mate_point_v0-2.ino`](mate_point_v0-2/mate_point_v0-2.ino)
 
@@ -196,8 +196,11 @@ Si tu demo 13 usa **`esp_display_panel.hpp`** en lugar de `rgb_lcd_port`, copiá
 ```
 mate_point_firmware/
 ├── PLAN-IMPLEMENTACION.md
+├── PLAN-POC-NOBANA-UART.md       ← POC dispensador real (Fase 4.4+)
+├── PROTOCOLO-UART-NOBANA.md
 ├── README.md
 ├── reference/                    ← backup demo 13
+├── mate_point_UART_v0-1/         ← POC UART Etapa 1 (ESP32)
 └── mate_point_v0-1/                ← abrir en Arduino IDE
     ├── mate_point_v0-1.ino
     ├── config.h
@@ -386,11 +389,31 @@ Pago sandbox → webhook → servidor publica `command` → misma secuencia en p
 
 ## 12. Próximo hito
 
-**Cerrado en código (2026-05-29):** POC v0.2 — ver **§15**.
+**Cerrado (2026-06-03):** POC v0.2 — implementación y validación E2E en hardware — ver **§15**.
 
-**Pendiente:** validación **E2E en hardware** (Comprar → escanear QR sandbox → **Dispensado** → Listo; y timeout 2 min sin pago).
+**Próximo:** **POC Nobana UART** — **Etapa 1:** ESP32 + Monitor Serie; **Etapa 2:** integrar en `mate_point_v0-2` (Waveshare). Ver **§16** y [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md).
 
-**Después:** **Fase 4.4+** UART Nobana.
+**Después:** Fase 4.4–4.10 completa (watchdog, temperatura en `status`, E2E pago → UART).
+
+---
+
+## 16. POC Nobana UART — dispensador real (ESP32 → v0.2)
+
+**Estado:** **Etapa 1 implementada** (2026-06-03) — [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/); validación en banco pendiente.
+
+| Etapa | Plataforma | Alcance |
+|-------|------------|---------|
+| **1** | ESP32 NodeMCU + TXS0108E (pines como sniffer, §3 del plan) | Maestro UART, Coffee, duración por comando Serial, **solo Monitor Serie**; probar stop **timer** (`T`) y **manual** (`M`) |
+| **2** | `mate_point_v0-2` + Waveshare | Port del driver; MQTT `duration_ms`; UI + flujo Comprar/QR |
+
+| Ítem | Detalle |
+|------|---------|
+| Protocolo | [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) — Coffee `C2` + `d7=0x55` |
+| Sniffer / pines | [`tools/nobana_uart_sniffer/`](../tools/nobana_uart_sniffer/) — GPIO **16=RX**, **17=TX** en controlador |
+| Nobana al arranque | **No bloqueado** — sin secuencia `01`/`03` |
+| Relación 4.4–4.10 | Etapa 1 ≈ 4.4–4.6 en banco; Etapa 2 ≈ producto + 4.7+ |
+
+**Criterios de aceptación:** [`PLAN-POC-NOBANA-UART.md` §9](PLAN-POC-NOBANA-UART.md).
 
 ---
 
@@ -473,11 +496,11 @@ Recomendación POC: **PROGMEM**.
 - [x] Timer 2 min → `POST /orders/cancel` → vuelve a **Comprar**
 - [x] WiFi/MQTT footer operativo (known issue v0.1 aceptable)
 
-**Validación en hardware (pendiente):**
+**Validación en hardware (2026-06-03):**
 
-- [ ] QR escaneable con app MP sandbox
-- [ ] E2E: Comprar → pago → **Dispensado** sin Postman
-- [ ] E2E: timeout 2 min sin pago
+- [x] QR escaneable con app MP sandbox
+- [x] E2E: Comprar → pago → **Dispensado** sin Postman
+- [x] E2E: timeout 2 min sin pago
 
 ### 14.8 Orden de implementación (registro)
 
@@ -491,7 +514,7 @@ Recomendación POC: **PROGMEM**.
 | 6 | QR en LVGL (PROGMEM) | **Hecho** |
 | 7 | Timer + cancel | **Hecho** |
 | 8 | MQTT dispense → **Dispensado** | **Hecho** |
-| 9 | E2E completo en hardware | **Pendiente** |
+| 9 | E2E completo en hardware | **Hecho** (2026-06-03) |
 
 ---
 
@@ -545,11 +568,12 @@ Símbolos en firmware: `qr_static_map[]`, `qr_static_img` (`lv_img_dsc_t`, `LV_I
 
 Placa: Waveshare ESP32-S3-Touch-LCD-7 · `LV_COLOR_DEPTH=16` (RGB565).
 
-### 15.5 Prueba E2E sugerida
+### 15.5 Prueba E2E en hardware — **Completada** (2026-06-03)
 
-1. Flashear `mate_point_v0-2.ino` · editar Wi‑Fi en `config.h`.
-2. Toque **Comprar** → ver QR + countdown 2:00.
-3. Escanear con MP sandbox → pagar → **Dispensado** → Listo → Comprar.
-4. Repetir sin pagar → a los 2 min vuelve a Comprar (orden cancelada en servidor).
+| Caso | Resultado |
+|------|-----------|
+| QR escaneable (MP sandbox) | OK |
+| Comprar → pago → **Dispensado** → Listo → Comprar | OK |
+| Timeout 2 min sin pago → vuelve a Comprar | OK |
 
-Monitor serie: `[app] order created`, `[app] QR timeout`, `[mqtt] dispense accepted`.
+Monitor serie observado: `[app] order created`, `[app] QR timeout`, `[mqtt] dispense accepted`.
