@@ -216,7 +216,9 @@ Copiar `mate_point_UART_v0-1.ino` → `mate_point_UART_v0-2/mate_point_UART_v0-2
 
 ## 11. Integración futura (Waveshare)
 
-Port del driver a [`mate_point_v0-2/`](mate_point_v0-2/) (producto): tras pago → equivalente a `S`; MQTT dispense → equivalente a `R`; fin → auto standby.
+**Primero:** validar en Waveshare el ciclo automático en [`mate_point_UART_v0-3/`](mate_point_UART_v0-3/) — [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md).
+
+**Después:** port del driver a [`mate_point_v0-2/`](mate_point_v0-2/) (producto): tras pago → equivalente a `S`; MQTT dispense → equivalente a `R`; fin → auto standby.
 
 ---
 

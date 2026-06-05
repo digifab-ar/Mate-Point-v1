@@ -9,8 +9,8 @@ Sketch de **relevamiento** para capturar tramas entre PCB Nobana y módulo ARMOR
 |--------------|----------|---------------|
 | **G** | GND | GND |
 | **5V** | VCCB | — (ESP32 por USB) |
-| **Tx** | B1 → A1 | **GPIO16** (RX2 / Serial2) |
-| **Rx** | B2 → A2 | **GPIO17** (Serial1 RX) |
+| **Tx** | B1 → A1 | **GPIO25** (`Serial2` RX) — NOB→ARM |
+| **Rx** | B2 → A2 | **GPIO17** (`Serial1` RX) — ARM→NOB |
 | ESP32 **3.3V** | VCCA + OE | — |
 
 ARMOR permanece conectado al cable de 4 pines (sniffer en paralelo).

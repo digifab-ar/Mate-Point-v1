@@ -1,15 +1,26 @@
-# Plan de implementación — POC UART Nobana (ESP32 → luego Waveshare v0.2)
+# POC UART Nobana — Etapa 1 replay ARMOR (ESP32 → producto Waveshare)
 
 **Proyecto:** Mate Point — OT-00268 Etapa 3  
 **Objetivo:** validar comunicación **maestro** con el PCB Nobana, luego integrar el driver en **`mate_point_v0-2`**.  
 **Última actualización:** 2026-06-04  
 **Estado:** **Etapa 1 cerrada en banco** — [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/) — replay §4 validado (capturas ESP 2026-06-04)
 
+### Jerarquía documental
+
+| Nivel | Documento | Este POC |
+|-------|-----------|----------|
+| 1 — Maestro | [`PLAN-IMPLEMENTACION.md`](PLAN-IMPLEMENTACION.md) | Estado global y §16 índice UART |
+| 2 — POC UART | **Este archivo** | Procedimiento banco, FSM replay, criterios §8 |
+| 3 — Protocolo | [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) | **Única fuente de verdad** de tramas y semántica |
+
 | Documento | Contenido |
 |-----------|-----------|
-| [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) | Protocolo §7 + **§7.6–7.7** validación ESP |
+| [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) | Tramas, flujos §7, **§7.6–7.7** validación ESP, §4.4 tanque |
+| [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md) | Etapa 2a-ESP — kiosco manual (ESP32 Dev) |
+| [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) | Etapa 2a-WS — ciclo auto Waveshare (1×/boot) |
 | **Captura ref. (ARMOR)** | [`2026-06-03-inicio-dispense-coffee-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin.md) |
 | **Capturas POC ESP (validación)** | [`2026-06-04-…_ESP-UART_Wake_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART_Wake_manual.md) (procedimiento **`W`→`R`**) · [`2026-06-04-…_ESP-UART.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md) |
+| **Captura Waveshare v0-3 (banco OK)** | [`2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) |
 | Otras capturas | `inicio-fin`, `…_manual` — Etapa 1b |
 | [`tools/nobana_uart_sniffer/`](../tools/nobana_uart_sniffer/) | Sniffer y cableado |
 
@@ -19,8 +30,10 @@
 
 | Etapa | Plataforma | Alcance | Salida |
 |-------|-----------|---------|--------|
-| **1 — POC UART** | ESP32 + TXS0108E | **Simular de punta a punta** la captura ref. (ON → bloqueado → Coffee 180 ml → fin timer → bloqueado) | Replay UART verificable en banco + log Serial |
-| **2 — Producto** | Waveshare `mate_point_v0-2` | MQTT `duration_ms`, UI, Comprar/QR | Fases 4.4–4.10 |
+| **1 — POC UART** | ESP32 + TXS0108E · [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/) | **Replay** captura ref. (ON → Coffee 180 ml timer → bloqueado) | **Cerrada** 2026-06-04 |
+| **2a-ESP — Kiosco** | ESP32 · [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/) | `W`/`S`/`R` manual sin lock `23` | [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md) |
+| **2a-WS — Waveshare auto** | Waveshare · [`mate_point_UART_v0-3/`](mate_point_UART_v0-3/) | Ciclo auto `W→S→R`, **1×/boot** — **cerrado banco 2026-06-04** | [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) · [captura OK](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) |
+| **2b — Producto** | Waveshare [`mate_point_v0-2/`](mate_point_v0-2/) | MQTT + UI Comprar/QR + driver | Fases 4.4–4.10 |
 
 **Decisión Etapa 1 (2026-06-03):** el ESP32 **sustituye al ARMOR** en el bus (ARMOR desconectado) y ejecuta el **mismo guion UART** que el panel en la captura ref., no un subconjunto suelto de tramas.
 
@@ -49,7 +62,7 @@ Reproducir en el Nobana la **misma secuencia de tramas ARM→NOB** y leer teleme
 - Wake **`F8`** solo con comando **`W`**; replay **`R`** ejecuta fases **B→I** sin repetir `F8`.
 - Duraciones por fase tomadas del log (§4.2); disparo de pre-stop/fin por **tiempo** o por **progress ≥ 155** (`0x9B`), como en la ref.
 
-### 2.3 Fuera de alcance Etapa 1 (hasta cerrar §9)
+### 2.3 Fuera de alcance Etapa 1 (Etapa 1b — ver §9)
 
 | Tema | Captura |
 |------|---------|
@@ -88,9 +101,9 @@ Referencia firmware: [`mate_point_UART_v0-1.ino`](mate_point_UART_v0-1/mate_poin
 ## 4. Guion UART — replay captura ref.
 
 Referencia: [`2026-06-03-inicio-dispense-coffee-fin.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin.md) (log 13:01:38 → 13:02:35).  
-Análisis detallado: PROTOCOLO §7.1–7.3.
+Análisis normativo: [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) §7.1–7.3 · §9.2 (`F8`).
 
-### 4.1 Fases (máquina de estados)
+### 4.1 Fases (máquina de estados — guion operativo POC)
 
 ```mermaid
 stateDiagram-v2
@@ -109,39 +122,24 @@ stateDiagram-v2
     LOCK_23 --> [*]: polling 23
 ```
 
-| Fase | `cmd` | `b5` | `d7` | Duración ref. | Trama tipo (seq ej.) |
-|------|-------|------|------|---------------|----------------------|
-| **A** `RX_BOOT` | — | — | — | **5 s** (comando **`W`**) | Ignorar RX: `WARN trunc`, ráfagas `00…`; log `NOB->ESP` |
-| **A′** `POST_F8` | — | *(1 B)* | — | **F8** + **3 s** escucha | **`F8`** ESP→NOB — ver §4.1.1; luego `[wake] LISTO` |
-| **B** `START_21` | `0x21` | `00` | `00` | **~4,0 s** (43,2→47,0) | `68 01 21 00 00 00 00 00 8A` |
-| **C** `IDLE_23` | `0x23` | `00` | `00` | **~3,0 s** (47,0→50,0) | `68 02 23 00 00 00 00 00 8D` |
-| **D** `DISPENSE` | `0xE2` | `00` | `0x55` | **~24 s** (50,0→14,0) | `68 03 E2 00 00 00 00 55 A2` |
-| **E** `PRE_STOP` | `0xE2` | `04` | `0x55` | **~3,9 s** (14,0→17,9) | `68 03 E2 00 00 04 00 55 A6` |
-| **F** `STOP_22_04` | `0x22` | `04` | `0x55` | **1×** (~100 ms) | `68 03 22 00 00 04 00 55 E6` |
-| **G** `CLOSE_22_00` | `0x22` | `00` | `0x55` | **≥2 s** o hasta `b2=11` | `68 03 22 00 00 00 00 55 E2` |
-| **H** `COOLDOWN_22` | `0x22` | `00` | `0x55` | **~15 s** (18,1→33,5) | `68 04 22 …` (seq sube) |
-| **I** `LOCK_23` | `0x23` | `00` | `0x55` | continuo | `68 05 23 00 00 00 00 55 E5` |
+| Fase | `cmd` | `b5` | `d7` | Duración ref. | Trama tipo (seq ej.) | PROTOCOLO |
+|------|-------|------|------|---------------|----------------------|-----------|
+| **A** `RX_BOOT` | — | — | — | **5 s** (comando **`W`**) | Ignorar RX: `WARN trunc`, ráfagas `00…`; log `NOB->ESP` | §7.1 · §9.3 |
+| **A′** `POST_F8` | — | *(1 B)* | — | **F8** + **3 s** escucha | **`F8`** ESP→NOB — §4.1.1; luego `[wake] LISTO` | §9.2 |
+| **B** `START_21` | `0x21` | `00` | `00` | **~4,0 s** (43,2→47,0) | `68 01 21 00 00 00 00 00 8A` | §7.1 |
+| **C** `IDLE_23` | `0x23` | `00` | `00` | **~3,0 s** (47,0→50,0) | `68 02 23 00 00 00 00 00 8D` | §7.2 |
+| **D** `DISPENSE` | `0xE2` | `00` | `0x55` | **~24 s** (50,0→14,0) | `68 03 E2 00 00 00 00 55 A2` | §7.3 |
+| **E** `PRE_STOP` | `0xE2` | `04` | `0x55` | **~3,9 s** (14,0→17,9) | `68 03 E2 00 00 04 00 55 A6` | §7.3 |
+| **F** `STOP_22_04` | `0x22` | `04` | `0x55` | **1×** (~100 ms) | `68 03 22 00 00 04 00 55 E6` | §7.3 |
+| **G** `CLOSE_22_00` | `0x22` | `00` | `0x55` | **≥2 s** o hasta `b2=11` | `68 03 22 00 00 00 00 55 E2` | §7.3 |
+| **H** `COOLDOWN_22` | `0x22` | `00` | `0x55` | **~15 s** (18,1→33,5) | `68 04 22 …` (seq sube) | §7.3 |
+| **I** `LOCK_23` | `0x23` | `00` | `0x55` | continuo | `68 05 23 00 00 00 00 55 E5` | §7.3 |
 
-#### 4.1.1 Byte `0xF8` — wake del maestro (no es basura RX)
+#### 4.1.1 Byte `0xF8` — wake del maestro
 
-En las **tres** capturas 2026-06-03, tras los bloques de `0x00` al encender y **antes** del primer `0x68`:
+Norma completa, tablas de capturas y parser: [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) **§9.2**.
 
-| Captura | Hora | Evento | Δ → primer `68 01 21` |
-|---------|------|--------|------------------------|
-| `inicio-fin` | 12:55:52,070 | `ARM→NOB len=1 HEX: F8` | ~167 ms |
-| `inicio-dispense-coffee-fin` | 13:01:43,029 | idem | ~167 ms |
-| `…_manual` | 17:37:53,151 | idem | ~198 ms |
-
-| Hecho | Evidencia |
-|-------|-----------|
-| Lo envía el **maestro** (ARMOR; en POC el **ESP32**) | Siempre **ARM→NOB**, nunca Nobana→ARM |
-| Aparece **una vez** por encendido | No se repite en dispensado ni en idle |
-| Precede al protocolo `0x68` | Inmediatamente después viene `68 01 21 …` |
-| **No** hay respuesta Nobana solo a `F8` | La primera trama NOB válida llega durante el polling `21` |
-
-**Conclusión:** `0xF8` no es ruido aleatorio; es un **byte de arranque / wake** del maestro hacia el Nobana. En el POC, **`W`** ejecuta A+A′; **`R`** inicia en **B** sin repetir `F8`.
-
-**POC ESP (2026-06-04):** tras `F8` la ventana de 3 s puede mostrar solo `00` (sin `0x68`); el replay **`R`** igualmente completó el ciclo si Nobana ya estaba ON. Procedimiento: Nobana ON → **`W`** → revisar log → **`R`**.
+En el POC: comando **`W`** ejecuta fases **A + A′**; **`R`** inicia en **B** sin repetir `F8`. Tras `F8`, la ventana de 3 s puede mostrar solo `00` (sin `0x68`); **`R`** igualmente completó el ciclo si Nobana ya estaba ON (2026-06-04). Procedimiento: Nobana ON → **`W`** → revisar log → **`R`**.
 
 **Notas del log:**
 
@@ -282,9 +280,9 @@ Al pulsar **`R`**: `seq=1` en fase B; **`seq` fijo** en cada fase durante el pol
 | 7 | Comandos **`W`** + **`R`** + log §4.4 | Una pasada completa en banco con agua |
 | 8 | Capturas ESP **2026-06-04** en `capturas/` | Comparar telemetría con ref. §7.3 |
 
-### Etapa 2 — Waveshare (tras §9)
+### Etapa 2 — ver §10
 
-Port de `replay_ref_fsm` / driver a `mate_point_v0-2` + MQTT `duration_ms` + UI (sin cambiar tramas validadas).
+Port del driver a Etapa **2a** (UART kiosco) y **2b** (`mate_point_v0-2` Waveshare) — sin cambiar tramas validadas en Etapa 1.
 
 ---
 
@@ -324,12 +322,17 @@ Referencia cruzada: [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) §7.6
 - Replay [`…_fin_manual.md`](../tools/nobana_uart_sniffer/capturas/2026-06-03-inicio-dispense-coffee-fin_manual.md)
 - Presets 250 / 750 ml, otras bebidas
 - Omitir `F8` en POC (efecto en Nobana) — prueba A/B en banco
+- Pruebas **tanque vacío / nivel bajo** en banco — [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) §4.4 · captura [`2026-06-04-Water_empty_ESP-UART-v0-2.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Water_empty_ESP-UART-v0-2.md)
 
 ---
 
-## 10. Etapa 2 — Producto (resumen)
+## 10. Etapa 2 — Integración (resumen)
 
-Integrar el driver validado en `mate_point_v0-2`: misma semántica de tramas (`E2`/`22`/`23`), duración vía MQTT en lugar del timer interno del replay, UI + Detener.
+| Sub-etapa | Destino | Plan | Notas |
+|-----------|---------|------|-------|
+| **2a-ESP** | [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/) | [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md) | Kiosco manual: `W` → `S` → `R` (ESP32 Dev) |
+| **2a-WS** | [`mate_point_UART_v0-3/`](mate_point_UART_v0-3/) | [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) | **Cerrada** 2026-06-04 — Waveshare auto 1×/boot; GPIO **44/43**; [validación OK](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) |
+| **2b** | [`mate_point_v0-2/`](mate_point_v0-2/) Waveshare | [`PLAN-IMPLEMENTACION.md`](PLAN-IMPLEMENTACION.md) §16 | UI + MQTT; **port driver** (próximo) |
 
 ---
 
@@ -354,4 +357,7 @@ Integrar el driver validado en `mate_point_v0-2`: misma semántica de tramas (`E
 | 2026-06-03 | Alineación capturas 2026-06-03; `E2`/`22`/`23` |
 | 2026-06-03 | **Etapa 1 acotada a replay** `inicio-dispense-coffee-fin.md`: §4 guion A–I, tiempos, `R`, criterios §8; manual/otros fuera de alcance |
 | 2026-06-04 | **Etapa 1 cerrada:** validación banco ESP (capturas 2026-06-04); wake manual **`W`**; §8 criterios [x]; PROTOCOLO §7.6–7.7 |
+| 2026-06-04 | §10: Etapa **2a-WS** [`mate_point_UART_v0-3`](mate_point_UART_v0-3/) ciclo auto Waveshare |
+| 2026-06-04 | **2a-WS banco OK** — captura [`2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) |
+| 2026-06-04 | Jerarquía documental; §10 Etapa 2a/2b; §4.1.1 acortado → PROTOCOLO §9.2; §9 tanque vacío |
 | 2026-06-03 | §4.1.1: `0xF8` = wake maestro (ARM→NOB), no basura; fase A′ en replay ESP |

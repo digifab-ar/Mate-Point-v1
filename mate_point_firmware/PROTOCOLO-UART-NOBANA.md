@@ -2,7 +2,7 @@
 
 Documento de referencia del protocolo observado entre panel ARMOR (BF7612DM28) y PCB Nobana.
 
-**Estado:** relevamiento ARM **2026-06-03** · **POC ESP32 maestro validado 2026-06-04** (§7.6)  
+**Estado:** relevamiento ARM **2026-06-03** · **POC ESP32 maestro validado 2026-06-04** (§7.6) · **Waveshare v0-3 auto validado 2026-06-04** (§7.8)  
 **Fuente:** capturas con [`tools/nobana_uart_sniffer/`](../tools/nobana_uart_sniffer/) — ARMOR en paralelo (jun-03) y ESP32 [`mate_point_UART_v0-1`](mate_point_UART_v0-1/) sustituyendo ARMOR (jun-04).
 
 | Captura | Archivo | Escenario |
@@ -14,10 +14,12 @@ Documento de referencia del protocolo observado entre panel ARMOR (BF7612DM28) y
 | **POC ESP** | [`2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-inicio-dispense-coffee-fin_ESP-UART.md) | Misma secuencia UART; procedimiento wake anterior |
 | **POC ESP — tanque vacío** | [`2026-06-04-Water_empty_ESP-UART-v0-2.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Water_empty_ESP-UART-v0-2.md) | Sin agua en tanque; niveles **`b2`** / byte 7 (§4.4) |
 
-| Documento relacionado | Contenido |
-|-----------------------|-----------|
-| [`PLAN-IMPLEMENTACION.md`](PLAN-IMPLEMENTACION.md) | Plan firmware |
-| [`plan-de-implementacion.md`](../plan-de-implementacion.md) | Plan general, prerrequisito R1–R3 |
+| Documento relacionado | Rol |
+|-----------------------|-----|
+| [`PLAN-IMPLEMENTACION.md`](PLAN-IMPLEMENTACION.md) | Plan maestro firmware (MQTT, UI, roadmap §16) |
+| [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) | POC Etapa 1 — replay ARMOR, banco `W`/`R` |
+| [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md) | POC kiosco ESP32 — `W`/`S`/`R` (UART v0-2) |
+| [`plan-de-implementacion.md`](../plan-de-implementacion.md) | Plan general proyecto, prerrequisito R1–R3 |
 | [`tools/nobana_uart_sniffer/README.md`](../tools/nobana_uart_sniffer/README.md) | Sniffer y cableado |
 
 ---
@@ -122,15 +124,27 @@ Escenarios **no contradichos** por las tres capturas actuales, pero **aún sin l
 | Adaptador relevamiento | TXS0108E (VCCA 3,3 V, VCCB 5 V, **OE = 3,3 V**) |
 | Polling ARM | ~**100 ms** — bus siempre activo |
 
-### Cableado sniffer
+### Cableado — sniffer (ARMOR conectado, escucha en paralelo)
 
-| Cable Nobana | TXS0108E | ESP32 NodeMCU |
-|--------------|----------|---------------|
-| **Tx** (Nobana TX) | B1 → A1 | GPIO16 (Serial2 RX) — **NOB→ARM** |
-| **Rx** (ARMOR TX) | B2 → A2 | GPIO17 (Serial1 RX) — **ARM→NOB** |
-| **G** | GND | GND común |
-| **5V** | VCCB | — |
-| ESP32 3,3 V | VCCA + OE | — |
+| Cable Nobana | TXS0108E | ESP32 NodeMCU | Dirección |
+|--------------|----------|---------------|-----------|
+| **Tx** (Nobana TX) | B1 → A1 | **GPIO25** (`Serial2` RX) | **NOB→ARM** |
+| **Rx** (ARMOR TX) | B2 → A2 | **GPIO17** (`Serial1` RX) | **ARM→NOB** |
+| **G** | GND | GND común | — |
+| **5V** | VCCB | — (ESP por USB) | — |
+| ESP32 3,3 V | VCCA + OE | — | — |
+
+Sketch: [`nobana_uart_sniffer.ino`](../tools/nobana_uart_sniffer/nobana_uart_sniffer.ino).
+
+### Cableado — maestro ESP32 (ARMOR desconectado, POC)
+
+| Cable Nobana | TXS0108E | ESP32 maestro | Uso |
+|--------------|----------|---------------|-----|
+| **Tx** | B1 → A1 | **GPIO25** — `Serial2` RX | Escucha Nobana |
+| **Rx** | B2 → A2 | **GPIO17** — `Serial2` TX | Maestro hacia Nobana |
+| **G** | GND | GND | — |
+
+Sketches: [`mate_point_UART_v0-1/`](mate_point_UART_v0-1/), [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/). Procedimiento banco: [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) §3.
 
 ---
 
@@ -687,6 +701,19 @@ El Nobana emite **chimes en transiciones de modo**, no por cada trama de polling
 
 **Polling sin chime:** repetir la **misma** trama (`68 01 21 …`, `68 03 E2 … 55`, etc.) con el **mismo `seq`** no produce beeps adicionales — condición necesaria para el POC (§0.2.1 V18).
 
+### 7.8 Waveshare maestro UART — ciclo automático v0-3 (2026-06-04)
+
+Firmware [`mate_point_UART_v0-3`](mate_point_UART_v0-3/) en **Waveshare ESP32-S3-Touch-LCD-7B** (GPIO **44** RX / **43** TX, DIP **UART2**, 9600 8N1). ARMOR desconectado. **Sin lock `23`** al cierre (igual v0-2 kiosco).
+
+| Aspecto | Validación banco |
+|---------|------------------|
+| Secuencia | Auto **1×/boot**: `F8` → poll `21` → Coffee timer **`E2`** + cierre **`22`** → fin |
+| Criterio principal | Chimes + panel Nobana + dispensado ~180 ml / T ~85 °C — **OK** |
+| TX bus | Solo `F8` + tramas `0x68` (firmware bus limpio); silencio TX tras ciclo |
+| Evidencia | [`2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) |
+
+Semántica de tramas y tiempos: misma que §7.3 y §7.6 (derivado de v0-2, sin replay ARMOR). Plan: [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md).
+
 ---
 
 ## 8. Observaciones empíricas — timer ARMOR
@@ -858,7 +885,9 @@ Por defecto imprime **FRAME solo si cambia** cmd/datos (ignora `seq` y checksum)
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-06-04 | **§2** cableado: GPIO25/17 sniffer y maestro; tabla documentos relacionados |
 | 2026-06-04 | **§4.4** sensor tanque: `b2=11` nivel bajo (dispensa OK), `b2=10`+byte7=`01` vacío (no dispensa); captura water-empty; §0.2.2 V22–V24; §10.1 |
+| 2026-06-04 | **§7.8** validación Waveshare v0-3 auto (banco OK); §7.6–7.7 ESP32 |
 | 2026-06-04 | **§7.6–7.7** validación POC ESP32 (capturas 2026-06-04); §0.2.1 V17–V21; `seq` por fase §3.2; chimes y wake manual `W` |
 | 2026-06-03 | §9.2 `0xF8` = wake maestro (ARM→NOB, 1× al encender); §9.3 basura RX; quitado `F8` de apagado; §7.1.1 y tabla §10.1 |
 | 2026-06-03 | Limpieza: eliminados patrones jun-01/02 que contradicen capturas 2026-06-03 (§10.2, stop `02`+`19`, `C2`-only, NOB `13`, puente `22`→`E2`) |
