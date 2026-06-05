@@ -3,7 +3,7 @@
 **Proyecto:** Mate Point — OT-00268 Etapa 3  
 **Base hardware producto:** Waveshare ESP32-S3-Touch-LCD-7B  
 **Device ID:** `MATEPOINT001`  
-**Última actualización:** 2026-06-04  
+**Última actualización:** 2026-06-05  
 
 | Hito | Estado |
 |------|--------|
@@ -11,9 +11,11 @@
 | POC v0.2 — Comprar + QR + E2E pago | **Completado** (2026-06-03) — §14–§15 |
 | POC UART Etapa 1 — replay ARMOR (`mate_point_UART_v0-1`) | **Completado en banco** (2026-06-04) — §16 |
 | UART Waveshare auto [`mate_point_UART_v0-3`](mate_point_UART_v0-3/) | **Completado en banco** (2026-06-04) — §16 |
-| Integración UART en producto Waveshare | **Próximo** — port driver a `mate_point_v0-2` · §12 · §16 |
+| Producto [`mate_point_v0-3`](mate_point_v0-3/) — UI + MQTT + Nobana (v0-3.0) | **Superseded** — baseline Test1 parcial |
+| Producto [`mate_point_v0-3-1`](mate_point_v0-3-1/) — timer MQTT | **E2E OK** Test1 2026-06-05 · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §11.2 |
+| Producto [`mate_point_v0-3-2`](mate_point_v0-3-2/) — UI dispensado + Parar | **Planificado** · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §15 |
 
-Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js)
+Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) · [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js)
 
 ---
 
@@ -202,15 +204,19 @@ Si tu demo 13 usa **`esp_display_panel.hpp`** en lugar de `rgb_lcd_port`, copiá
 ```
 mate_point_firmware/
 ├── PLAN-IMPLEMENTACION.md          ← este documento (índice maestro)
+├── PLAN-MATE-POINT-v0-3.md         ← producto Waveshare UI + Nobana (próximo)
 ├── PROTOCOLO-UART-NOBANA.md        ← diccionario bus UART
 ├── PLAN-POC-NOBANA-UART.md         ← POC Etapa 1 replay (ESP32 v0-1)
 ├── PLAN-MATE-POINT-UART-v0-2.md    ← POC kiosco W/S/R (ESP32 UART v0-2)
+├── PLAN-MATE-POINT-UART-v0-3.md    ← POC UART Waveshare auto (cerrada)
 ├── README.md
 ├── reference/                      ← backup demo 13
 ├── mate_point_v0-1/                ← MQTT + UI simulada
 ├── mate_point_v0-2/                ← Comprar + QR + MQTT (dispensado simulado)
+├── mate_point_v0-3/                ← producto: v0-2 + driver Nobana
 ├── mate_point_UART_v0-1/           ← POC UART Etapa 1 cerrada
-└── mate_point_UART_v0-2/           ← POC UART kiosco (sin lock 23)
+├── mate_point_UART_v0-2/           ← POC UART kiosco (sin lock 23)
+└── mate_point_UART_v0-3/           ← POC UART Waveshare auto (cerrada banco)
 ```
 
 Librerías Arduino adicionales (Library Manager): **PubSubClient**, **ArduinoJson** v7.
@@ -398,12 +404,21 @@ Pago sandbox → webhook → servidor publica `command` → misma secuencia en p
 
 **Cerrado (2026-06-04):** UART Waveshare auto [`mate_point_UART_v0-3/`](mate_point_UART_v0-3/) — banco OK — [`2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md).
 
-**Próximo:**
+**Implementado (2026-06-05)** — [`mate_point_v0-3/`](mate_point_v0-3/) · plan: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md)
 
-1. **UART kiosco ESP32** — validar [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/) (`W`/`S`/`R` manual): [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md).
-2. **Producto** — port driver Nobana a [`mate_point_v0-2/`](mate_point_v0-2/) (MQTT `dispense` → UART físico) — [`PLAN-POC-NOBANA-UART.md` §10](PLAN-POC-NOBANA-UART.md).
+**Validación banco pendiente:**
 
-**Después:** Fase 4.4–4.10 (watchdog, temperatura en `status`, E2E pago → UART físico).
+| # | Entregable | Notas |
+|---|------------|--------|
+| 1 | Fork `mate_point_v0-2` → `mate_point_v0-3` | Misma UI/flujo QR y MQTT |
+| 2 | Driver Nobana desde [`mate_point_UART_v0-3`](mate_point_UART_v0-3/) | `W` antes de LVGL; `S` en Comprar/QR; `R` en dispensado |
+| 3 | **Bus sin logs** | Solo `F8` + tramas `0x68` — sin `Serial` firmware (USB ni UART) |
+| 4 | Ciclos repetidos | Tras Listo → Comprar: **`S`** + nueva compra QR → nuevo **`R`** |
+| 5 | E2E banco | Pago sandbox + dispensado físico; captura sniffer |
+
+**Opcional en la misma iteración:** validar [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/) en ESP32 Dev (`W`/`S`/`R` manual) — no bloquea v0-3 Waveshare.
+
+**Después:** Fase 4.4–4.10 (watchdog, temperatura en `status`, tanque vacío en UI).
 
 ---
 
@@ -427,7 +442,7 @@ Pago sandbox → webhook → servidor publica `command` → misma secuencia en p
 | `COMPRAR` | Botón Comprar | `idle` | Toque → `CREATING` |
 | `CREATING` | "Creando orden…" (opcional) | `idle` | HTTP OK → `QR_SHOW`; error → `COMPRAR` |
 | `QR_SHOW` | Imagen QR + timer opcional | `idle` | MQTT dispense → `DISPENSING`; timeout → `COMPRAR` |
-| `DISPENSING` | **Dispensado** | `dispensing` | `duration_ms` → `TERMINADO` |
+| `DISPENSING` | **v0-3-1:** **Dispensado**. **v0-3-2:** **`83°`** + countdown + **Parar** | `dispensing` | `duration_ms` → `TERMINADO` |
 | `TERMINADO` | **terminado** | `dispensing` | 3 s → `LISTO` |
 | `LISTO` | **Listo** | `dispensing` | publicar `idle` → `COMPRAR` |
 
@@ -580,7 +595,11 @@ Resumen de la cadena UART; **detalle normativo del bus** en [`PROTOCOLO-UART-NOB
 | **1b** | — | Pendiente | Fin manual, otros ml, `D`/`T`/`M` — ver PLAN-POC §9 |
 | **2a-ESP** | [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/) · [PLAN v0-2](PLAN-MATE-POINT-UART-v0-2.md) | Implementado; banco pendiente | Kiosco manual `W`/`S`/`R` (ESP32 Dev) |
 | **2a-WS** | [`mate_point_UART_v0-3/`](mate_point_UART_v0-3/) · [PLAN v0-3](PLAN-MATE-POINT-UART-v0-3.md) | **Cerrada** 2026-06-04 | Waveshare: ciclo **auto** `W→S→R`, **1×/boot**, GPIO **44/43** — [captura OK](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) |
-| **2b** | [`mate_point_v0-2/`](mate_point_v0-2/) | Dispensado **simulado** hoy | MQTT + UI Comprar/QR + driver Nobana |
+| **2b** | [`mate_point_v0-3/`](mate_point_v0-3/) · [PLAN producto](PLAN-MATE-POINT-v0-3.md) | Superseded | v0-3.0 baseline |
+| **2b-1** | [`mate_point_v0-3-1/`](mate_point_v0-3-1/) · [PLAN §14](PLAN-MATE-POINT-v0-3.md) | **OK** Test1 2026-06-05 | `duration_ms` MQTT; **terminado** → **Listo** → Comprar |
+| **2b-2** | [`mate_point_v0-3-2/`](mate_point_v0-3-2/) · [PLAN §15](PLAN-MATE-POINT-v0-3.md) | Implementado | UI dispensado: **T_viva**, countdown, **Parar** (§7.4 manual ~1,8 s) |
+| **2b-3** | [`mate_point_v0-3-3/`](mate_point_v0-3-3/) · [PLAN §16](PLAN-MATE-POINT-v0-3.md) | **OK** Test1 2026-06-05 | Parar **200 ms**; UI countdown hasta 0; corte ~**300–500 ms** |
+| *(ref)* | [`mate_point_v0-2/`](mate_point_v0-2/) | Completado | Dispensado simulado — base de fork v0-3 |
 
 | Tema | Referencia |
 |------|------------|
@@ -594,10 +613,34 @@ Resumen de la cadena UART; **detalle normativo del bus** en [`PROTOCOLO-UART-NOB
 
 ---
 
+## 17. Producto `mate_point_v0-3` … `mate_point_v0-3-3` (índice)
+
+Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Roadmap UART: [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) §11–§13.
+
+| Tema | v0-3-1 — **banco OK** | v0-3-2 | v0-3-3 — **banco OK** |
+|------|----------------------|--------|------------------------|
+| Base | Fork v0-3.0 | Fork v0-3-1 | Fork v0-3-2 |
+| UI dispensado | Texto **Dispensado** | **`83°`** + countdown + **Parar** | Igual v0-3-2 |
+| Parar pre-stop | — | ~**1800 ms** (§7.4 ARMOR) | ~**200 ms** — corte ~**300–500 ms** |
+| UI **terminado** | Al fin stop | Al fin stop (`stop_done`) | Al **countdown 0** |
+| Post-Parar sin flujo | — | UI cambia pronto | Countdown sigue (validado Test1) |
+| T_viva tras Parar | — | Hasta fin stop UI | **Viva** (validado Test1) |
+| MQTT al Parar | — | Sin publish | Sin publish |
+| Validación | Test1 OK | Superseded | [`Test1 v0-3-3`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
+
+---
+
 ## Changelog
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-06-05 | **Etapa 2b-3 OK** — [`mate_point_v0-3-3/`](mate_point_v0-3-3/) Test1 banco; corte ~300–500 ms; captura [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
+| 2026-06-05 | **Etapa 2b-3** — [`mate_point_v0-3-3/`](mate_point_v0-3-3/); Parar 200 ms; UI contrato desacoplado; [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §16 |
+| 2026-06-05 | **Etapa 2b-2** — [`mate_point_v0-3-2/`](mate_point_v0-3-2/); UI dispensado (T_viva, countdown, Parar); [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §15 |
+| 2026-06-05 | **Etapa 2b-1 OK** — [`mate_point_v0-3-1/`](mate_point_v0-3-1/); Test1 E2E timer MQTT; captura [`2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md) |
+| 2026-06-05 | **v0-3-1 planificado e implementado** — timer MQTT, fin UI en stop |
+| 2026-06-05 | **Etapa 2b** — [`mate_point_v0-3/`](mate_point_v0-3/); Test1 E2E parcial (superseded) |
+| 2026-06-05 | **Etapa 2b planificada** — [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md); §12/§16 |
 | 2026-06-04 | **2a-WS cerrada en banco** — [`mate_point_UART_v0-3`](mate_point_UART_v0-3/); captura validación OK |
 | 2026-06-04 | §16: Etapa **2a-WS** [`mate_point_UART_v0-3`](mate_point_UART_v0-3/); §12 próximo hito |
 | 2026-06-04 | §16 índice UART; cabecera estado global; §4 estructura; pines 25/17 y `E2` |

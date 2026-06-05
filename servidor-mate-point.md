@@ -20,7 +20,7 @@ El servidor es el nodo central del sistema. Sus responsabilidades:
 | Crear órdenes MP | `POST /v1/orders` hacia la API de MercadoPago |
 | Recibir webhook | `POST /webhook/mp` — notificaciones de pago de MP |
 | Verificar pago | `GET /v1/orders/{id}` — confirmar `status: processed / accredited` |
-| Publicar MQTT | `mate/{device_id}/command` → `{ cmd: "dispense", duration_ms: 120000 }` |
+| Publicar MQTT | `mate/{device_id}/command` → `{ cmd: "dispense", duration_ms: 30000 }` — tiempo total dispensado (v0-3-1) |
 | Log de transacciones | Registro de cada pago recibido con timestamp y resultado |
 
 > El ESP32 **nunca** se comunica directamente con MercadoPago. Solo escucha el broker MQTT.
@@ -149,7 +149,7 @@ MercadoPago API
 2. [Usuario]  Escanea QR estático → paga en app MP
 3. [MP]       POST /webhook/mp → { topic: "merchant_order", id: "..." }
 4. [Servidor] GET /v1/orders/{id} → verifica status: processed / accredited
-5. [Servidor] mqtt.publish("mate/MATEPOINT001/command", { cmd:"dispense", duration_ms:120000 })
+5. [Servidor] mqtt.publish("mate/MATEPOINT001/command", { cmd:"dispense", duration_ms:30000 })
 6. [ESP32]    Recibe payload MQTT → envía trama UART al PCB Nobana → dispensa 120 s
 7. [ESP32]    mqtt.publish("mate/MATEPOINT001/status", { state:"dispensing" })
 8. [ESP32]    (t+120s) mqtt.publish("mate/MATEPOINT001/status", { state:"idle" })
@@ -184,7 +184,7 @@ Recibir POST
   │    └─ Si status ≠ "processed" o status_detail ≠ "accredited" → 200, loguear, salir
   │
   ├─ Publicar MQTT: mate/MATEPOINT001/command
-  │    payload: { cmd: "dispense", duration_ms: 120000, order_id: id, ts: Date.now() }
+  │    payload: { cmd: "dispense", duration_ms: 30000, order_id: id, ts: Date.now() }
   │
   └─ Responder HTTP 200 en < 22 s (requisito MP)
 ```
@@ -467,7 +467,7 @@ MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt
 # MQTT_USER=
 # MQTT_PASS=
 MQTT_DEVICE_ID=MATEPOINT001
-DISPENSE_DURATION_MS=120000
+DISPENSE_DURATION_MS=30000
 
 # App
 PORT=3000
@@ -550,11 +550,13 @@ curl https://<slug>.up.railway.app/health
 ```json
 {
   "cmd": "dispense",
-  "duration_ms": 120000,
+  "duration_ms": 30000,
   "order_id": "ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ",
   "ts": 1748369220000
 }
 ```
+
+> **`duration_ms` (firmware v0-3-1):** tiempo **total de dispensado** que el ESP ejecuta (fase activa + pre-stop + stop/cierre). No incluye cooldown Nobana (~15 s). Validado en banco 2026-06-05 con `30000` ms. Ver [`PLAN-MATE-POINT-v0-3.md`](mate_point_firmware/PLAN-MATE-POINT-v0-3.md) §8.2.
 
 **Payload `status` del ESP32:**
 

@@ -332,7 +332,7 @@ Referencia cruzada: [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) §7.6
 |-----------|---------|------|-------|
 | **2a-ESP** | [`mate_point_UART_v0-2/`](mate_point_UART_v0-2/) | [`PLAN-MATE-POINT-UART-v0-2.md`](PLAN-MATE-POINT-UART-v0-2.md) | Kiosco manual: `W` → `S` → `R` (ESP32 Dev) |
 | **2a-WS** | [`mate_point_UART_v0-3/`](mate_point_UART_v0-3/) | [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) | **Cerrada** 2026-06-04 — Waveshare auto 1×/boot; GPIO **44/43**; [validación OK](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) |
-| **2b** | [`mate_point_v0-2/`](mate_point_v0-2/) Waveshare | [`PLAN-IMPLEMENTACION.md`](PLAN-IMPLEMENTACION.md) §16 | UI + MQTT; **port driver** (próximo) |
+| **2b** | [`mate_point_v0-3/`](mate_point_v0-3/) Waveshare | [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) | UI + MQTT + Nobana; bus solo protocolo (planificado) |
 
 ---
 
