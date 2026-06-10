@@ -598,7 +598,7 @@ Resumen de la cadena UART; **detalle normativo del bus** en [`PROTOCOLO-UART-NOB
 | **2b** | [`mate_point_v0-3/`](mate_point_v0-3/) · [PLAN producto](PLAN-MATE-POINT-v0-3.md) | Superseded | v0-3.0 baseline |
 | **2b-1** | [`mate_point_v0-3-1/`](mate_point_v0-3-1/) · [PLAN §14](PLAN-MATE-POINT-v0-3.md) | **OK** Test1 2026-06-05 | `duration_ms` MQTT; **terminado** → **Listo** → Comprar |
 | **2b-2** | [`mate_point_v0-3-2/`](mate_point_v0-3-2/) · [PLAN §15](PLAN-MATE-POINT-v0-3.md) | Implementado | UI dispensado: **T_viva**, countdown, **Parar** (§7.4 manual ~1,8 s) |
-| **2b-3** | [`mate_point_v0-3-3/`](mate_point_v0-3-3/) · [PLAN §16](PLAN-MATE-POINT-v0-3.md) | **OK** Test1 2026-06-05 | Parar **200 ms**; UI countdown hasta 0; corte ~**300–500 ms** |
+| **2b-3** | [`mate_point_v0-3-3/`](mate_point_v0-3-3/) · [PLAN §16](PLAN-MATE-POINT-v0-3.md) | **E2E OK** Test1 2026-06-05 | Parar, timer natural, 2.ª compra tras Parar |
 | *(ref)* | [`mate_point_v0-2/`](mate_point_v0-2/) | Completado | Dispensado simulado — base de fork v0-3 |
 
 | Tema | Referencia |
@@ -626,7 +626,7 @@ Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Roadmap UA
 | Post-Parar sin flujo | — | UI cambia pronto | Countdown sigue (validado Test1) |
 | T_viva tras Parar | — | Hasta fin stop UI | **Viva** (validado Test1) |
 | MQTT al Parar | — | Sin publish | Sin publish |
-| Validación | Test1 OK | Superseded | [`Test1 v0-3-3`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
+| Validación | Test1 OK | Superseded | **E2E OK** — Parar + timer + 2.ª compra [`Test1`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
 
 ---
 
@@ -634,7 +634,8 @@ Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Roadmap UA
 
 | Fecha | Cambio |
 |-------|--------|
-| 2026-06-05 | **Etapa 2b-3 OK** — [`mate_point_v0-3-3/`](mate_point_v0-3-3/) Test1 banco; corte ~300–500 ms; captura [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
+| 2026-06-05 | **Etapa 2b-3 E2E OK** — fin natural timer + 2.ª compra tras Parar; captura [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
+| 2026-06-05 | **Etapa 2b-3 OK** — [`mate_point_v0-3-3/`](mate_point_v0-3-3/) Test1 banco; corte ~300–500 ms |
 | 2026-06-05 | **Etapa 2b-3** — [`mate_point_v0-3-3/`](mate_point_v0-3-3/); Parar 200 ms; UI contrato desacoplado; [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §16 |
 | 2026-06-05 | **Etapa 2b-2** — [`mate_point_v0-3-2/`](mate_point_v0-3-2/); UI dispensado (T_viva, countdown, Parar); [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §15 |
 | 2026-06-05 | **Etapa 2b-1 OK** — [`mate_point_v0-3-1/`](mate_point_v0-3-1/); Test1 E2E timer MQTT; captura [`2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md) |

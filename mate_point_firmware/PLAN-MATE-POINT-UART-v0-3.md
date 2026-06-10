@@ -432,10 +432,10 @@ Ver [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §15.7 (U1–U7).
 |---|--------|-------|
 | 1 | Sniffer Parar: `E2+04` ~200 ms → `22+00` | [ ] pendiente |
 | 2 | Parar ~10 s: flujo corta ~300–500 ms; UI countdown sin agua | [x] |
-| 3 | Fin natural 30 s: terminado al 0:00 | [~] no probado |
-| 4 | Segunda compra | [~] pendiente |
+| 3 | Fin natural 30 s: terminado al 0:00 | [x] |
+| 4 | Segunda compra tras Parar (esperar countdown 0) | [x] |
 
-Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) — **banco OK** 2026-06-05.
+Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) — **E2E OK** 2026-06-05.
 
 ---
 
@@ -449,4 +449,4 @@ Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uar
 | 2026-06-05 | **v0-3-1 Test1 OK** — E2E [`2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md) |
 | 2026-06-05 | **§12 `mate_point_v0-3-2`** — UI dispensado (T_viva, countdown, Parar); stop manual §7.4; ref. captura 2026-06-03 manual |
 | 2026-06-05 | **§13 `mate_point_v0-3-3`** — pre-stop 200 ms; UI contrato desacoplado |
-| 2026-06-05 | **v0-3-3 Test1 OK** — banco Nobana; corte Parar ~300–500 ms |
+| 2026-06-05 | **v0-3-3 Test1 E2E OK** — Parar, fin natural timer, 2.ª compra tras Parar |

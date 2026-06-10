@@ -14,11 +14,11 @@
 | **Sniffer** | No usado en esta sesión |
 | **Pago** | Mercado Pago sandbox (QR real) |
 | **Servidor** | `DISPENSE_DURATION_MS=30000` |
-| **Resultado** | **Banco OK** — Parar funcional; corte ~**300–500 ms**; UI contrato desacoplado validado |
+| **Resultado** | **E2E OK** — Parar ~300–500 ms; fin natural timer; **2.ª compra tras Parar** |
 
 ## Objetivo
 
-Validar [`mate_point_v0-3-3`](../../../mate_point_firmware/mate_point_v0-3-3/): pre-stop manual **200 ms** → `22+00`; corte hidráulico rápido; pantalla dispensado (T_viva + countdown) hasta **0:00** tras **Parar**; **terminado** → **Listo** → **Comprar**. Ver [`PLAN-MATE-POINT-v0-3.md`](../../../mate_point_firmware/PLAN-MATE-POINT-v0-3.md) §16.
+Validar [`mate_point_v0-3-3`](../../../mate_point_firmware/mate_point_v0-3-3/): pre-stop manual **200 ms** → `22+00`; corte hidráulico rápido; UI contrato hasta **0:00**; **terminado** → **Listo** → **Comprar**; **fin natural timer**; **segunda compra** tras Parar manual. Ver [`PLAN-MATE-POINT-v0-3.md`](../../../mate_point_firmware/PLAN-MATE-POINT-v0-3.md) §16.
 
 ## Resultado observable (banco)
 
@@ -29,6 +29,8 @@ Validar [`mate_point_v0-3-3`](../../../mate_point_firmware/mate_point_v0-3-3/): 
 - Tras Parar: pantalla **mantiene T_viva y countdown** hasta llegar a **0:00** (ventana sin flujo de agua — comportamiento esperado en prueba).
 - Al **0:00**: pantalla **terminado** → tras ~3 s **Listo** → **Comprar**.
 - Ciclo completo **funcional** con Nobana conectado; sin bloqueos ni errores de UI observados.
+- **Segunda compra** tras Parar manual: OK — hubo que **esperar countdown a 0:00** → **terminado** → **Listo** → vuelve **Comprar**; segundo ciclo (QR → pago → dispensado) sin reinicio.
+- **Fin natural** (sin Parar): dispensado hasta countdown **0:00** → **terminado** → **Listo** → **Comprar** — comportamiento correcto.
 
 ## Secuencia UI validada (Parar manual)
 
@@ -61,6 +63,17 @@ sequenceDiagram
 | 5 | **terminado** | — |
 | 6 | **Listo** (~3 s) | cooldown |
 | 7 | **Comprar** | standby |
+| 8 | **Comprar** (2.ª compra) | nuevo ciclo E2E OK |
+
+## Secuencia UI validada (fin natural timer)
+
+| Paso | UI | Nobana / flujo |
+|------|-----|----------------|
+| 1 | **83°** + countdown + **Parar** | `E2` activo hasta presupuesto MQTT |
+| 2 | Countdown → **0:00** (flujo activo hasta corte UART) | pre-stop timer → stop/cierre |
+| 3 | **terminado** | cooldown en background |
+| 4 | **Listo** (~3 s) | cooldown |
+| 5 | **Comprar** | standby |
 
 ## Criterios de aceptación (PLAN v0-3 §16.7)
 
@@ -71,9 +84,9 @@ sequenceDiagram
 | V3 | Tras Parar: T_viva + countdown hasta **0:00** | [x] |
 | V4 | **terminado** solo cuando countdown = 0 | [x] |
 | V5 | Ventana sin flujo + countdown > 0 | [x] observable en prueba |
-| V6 | terminado → Listo → Comprar | [x] |
+| V6 | terminado → Listo → Comprar; **2.ª compra** tras Parar | [x] — esperar countdown 0 antes de **Comprar** |
 | V7 | Sin MQTT adicional al Parar | [x] por diseño |
-| V8 | Fin natural (timer): terminado en countdown 0 | [~] no probado en esta sesión |
+| V8 | Fin natural (timer): terminado en countdown 0 | [x] |
 
 ## Evidencia UART (sniffer)
 
@@ -87,4 +100,4 @@ No registrada. Validación por UI, chimes Nobana, flujo físico y tiempo de cort
 
 ## Conclusión
 
-**Test1 v0-3-3 (2026-06-05) cierra el objetivo de prueba en banco con Nobana:** Parar rápido (~300–500 ms), UI desacoplada (countdown hasta 0:00, T_viva viva), secuencia **terminado → Listo → Comprar** funcional. Pendiente formal: sniffer TX, fin natural timer (V8), segunda compra tras Parar documentada en sesión aparte.
+**Test1 v0-3-3 (2026-06-05) cierra E2E en banco con Nobana:** Parar rápido (~300–500 ms), UI desacoplada (countdown hasta 0:00, T_viva viva), fin natural timer, **segunda compra tras Parar** (esperando countdown a cero). Pendiente formal: sniffer TX (V1).

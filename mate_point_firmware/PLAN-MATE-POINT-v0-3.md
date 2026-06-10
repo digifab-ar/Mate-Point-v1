@@ -334,9 +334,9 @@ Leyenda: **[x]** validado · **[~]** parcial · **[ ]** pendiente.
 - [x] UI: T_viva viva + countdown hasta **0:00** tras Parar; ventana sin flujo observable.
 - [x] **terminado** al countdown 0; **Listo** → **Comprar**.
 - [x] Sin MQTT adicional al Parar.
+- [x] **Fin natural timer** (V8) — countdown 0 → terminado → Listo → Comprar.
+- [x] **Segunda compra** tras Parar — OK tras esperar countdown a **0:00**.
 - [~] Sniffer TX — pendiente.
-- [~] Fin natural timer (V8) — no probado en Test1.
-- [~] Segunda compra tras Parar — pendiente sesión aparte.
 
 Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md)
 
@@ -356,7 +356,14 @@ Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uar
 | 2026-06-04 | [`2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md`](../tools/nobana_uart_sniffer/capturas/2026-06-04-Waveshare-UART-v0-3_banco-validacion-OK.md) | POC [`mate_point_UART_v0-3`](mate_point_UART_v0-3/) — W→S→R auto, sin UI/MQTT | **Cerrado OK** |
 | 2026-06-05 | [`2026-06-05-Waveshare-Mate_point-v0-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3_Test1.md) | Producto [`mate_point_v0-3`](mate_point_v0-3/) — E2E pago MP + Nobana + 2.ª compra | **Parcial** |
 | 2026-06-05 | [`2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md) | Producto [`mate_point_v0-3-1`](mate_point_v0-3-1/) — timer MQTT, terminado → Listo | **OK** |
-| 2026-06-05 | [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) | Producto [`mate_point_v0-3-3`](mate_point_v0-3-3/) — Parar 200 ms, UI contrato, corte ~300–500 ms | **OK** |
+| 2026-06-05 | [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) | Producto [`mate_point_v0-3-3`](mate_point_v0-3-3/) — Parar, timer natural, 2.ª compra tras Parar | **E2E OK** |
+
+### Validado en Test1 v0-3-3 (2026-06-05)
+
+- **Parar** manual: corte ~**300–500 ms**; UI mantiene T_viva + countdown hasta **0:00** (ventana sin flujo).
+- **Fin natural** timer MQTT: countdown → **terminado** → **Listo** → **Comprar**.
+- **Segunda compra** tras Parar: funcional; requiere esperar countdown a cero antes de volver a **Comprar**.
+- E2E pago sandbox + Nobana en banco; sin sniffer TX.
 
 ### Validado en Test1 v0-3-1 (2026-06-05)
 
@@ -669,7 +676,7 @@ El countdown UI vive en **`dispense_controller`** (no en `nobana_dispense_remain
 | 2 | Pre-stop 200 ms + abort manual | [x] banco — funcional (~300–500 ms corte) |
 | 3 | UI countdown desacoplado + terminado en 0 | [x] Test1 |
 | 4 | T_viva viva en cola post-Parar | [x] Test1 |
-| 5 | E2E Parar temprano + fin natural + 2.ª compra | [~] Parar OK; timer + 2.ª compra pendiente |
+| 5 | E2E Parar temprano + fin natural + 2.ª compra | [x] Test1 |
 
 ### 16.7 Criterios de aceptación (banco v0-3-3)
 
@@ -680,9 +687,9 @@ El countdown UI vive en **`dispense_controller`** (no en `nobana_dispense_remain
 | V3 | Tras Parar: UI mantiene T_viva + countdown hasta **0:00** | [x] |
 | V4 | **terminado** solo cuando countdown = 0 (no al fin hidráulico) | [x] |
 | V5 | Ventana sin flujo + countdown > 0 observable en prueba | [x] |
-| V6 | terminado → Listo → Comprar; 2.ª compra OK | [x] ciclo completo; [~] 2.ª tras Parar |
+| V6 | terminado → Listo → Comprar; 2.ª compra OK | [x] tras Parar (esperar countdown 0) |
 | V7 | Sin MQTT adicional al Parar | [x] |
-| V8 | Fin natural (timer): misma regla UI (terminado en countdown 0) | [~] no probado Test1 |
+| V8 | Fin natural (timer): misma regla UI (terminado en countdown 0) | [x] |
 
 Captura Test1: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md)
 
@@ -700,3 +707,4 @@ Captura Test1: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/noba
 | 2026-06-05 | **§15.3.1** — análisis POC UART: v0-3 sin `X`; v0-2 `X` = abort blando (no §7.4); Parar ≠ `dispense_abort()` v0-2 |
 | 2026-06-05 | **§16 `mate_point_v0-3-3`** — Parar pre-stop 200 ms; UI contrato desacoplado (terminado en countdown 0); T_viva viva |
 | 2026-06-05 | **v0-3-3 Test1 OK** — banco Nobana; corte Parar ~300–500 ms; captura [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
+| 2026-06-05 | **v0-3-3 Test1 E2E completo** — fin natural timer + 2.ª compra tras Parar (countdown a 0) |

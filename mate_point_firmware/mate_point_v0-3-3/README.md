@@ -1,12 +1,12 @@
 # Mate Point firmware v0-3-3
 
-**Producto validado banco** — fork de [`mate_point_v0-3-2`](../mate_point_v0-3-2/): Parar rápido + UI contrato desacoplado.
+**Producto E2E validado banco** — fork de [`mate_point_v0-3-2`](../mate_point_v0-3-2/): Parar rápido + UI contrato desacoplado.
 
 Plan: [`PLAN-MATE-POINT-v0-3.md`](../PLAN-MATE-POINT-v0-3.md) §16 · Test1: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md)
 
 ## Flujo
 
-Comprar → QR → pago → **`83°` + countdown + Parar** → (Parar corta flujo ~**300–500 ms**; UI sigue hasta **0:00**) → **terminado** → **Listo** → **Comprar**
+Comprar → QR → pago → **`83°` + countdown + Parar** → (Parar o timer) → countdown **0:00** → **terminado** → **Listo** → **Comprar**
 
 ## Cambios vs v0-3-2
 
@@ -57,12 +57,12 @@ Abrir: `mate_point_v0-3-3/mate_point_v0-3-3.ino`
 
 Igual v0-3-1. `duration_ms` = tiempo total dispensado. Servidor: `DISPENSE_DURATION_MS=30000`.
 
-## Validación banco (Test1 2026-06-05)
+## Validación banco (Test1 2026-06-05) — E2E OK
 
 - [x] Parar: corte flujo ~**300–500 ms**; funcional con Nobana
-- [x] UI countdown sin agua hasta **0:00**
+- [x] UI countdown sin agua hasta **0:00** (tras Parar)
 - [x] **terminado** al countdown 0 → **Listo** → **Comprar**
 - [x] T_viva viva tras Parar
+- [x] **Fin natural timer** — countdown 0 → terminado → Listo → Comprar
+- [x] **Segunda compra** tras Parar — OK (esperar countdown a **0:00** antes de **Comprar**)
 - [ ] Sniffer: `E2+04` ~200 ms → `22+00`
-- [ ] Fin natural timer (V8)
-- [ ] Segunda compra tras Parar
