@@ -2,8 +2,8 @@
 
 #define DEVICE_ID "MATEPOINT001"
 
-#define WIFI_SSID "DuoCasa"
-#define WIFI_PASSWORD "01431931344"
+#define WIFI_SSID "Sucasa"
+#define WIFI_PASSWORD "12091955"
 
 #define MQTT_HOST "broker.hivemq.com"
 #define MQTT_PORT 1883
