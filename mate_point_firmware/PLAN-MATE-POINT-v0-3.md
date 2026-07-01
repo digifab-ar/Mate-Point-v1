@@ -4,14 +4,12 @@
 **Carpeta v0-3.0:** [`mate_point_v0-3/`](mate_point_v0-3/) — baseline implementado  
 **Carpeta v0-3-1:** [`mate_point_v0-3-1/`](mate_point_v0-3-1/) — timer MQTT (§14)  
 **Carpeta v0-3-2:** [`mate_point_v0-3-2/`](mate_point_v0-3-2/) — UI dispensado + Parar (§15)  
+**Carpeta v0-3-4:** [`mate_point_v0-3-4/`](mate_point_v0-3-4/) — VL53L0X + Iniciar (§17)  
 **Base:** [`mate_point_v0-2/`](mate_point_v0-2/) (UI + MQTT + QR) + driver [`mate_point_UART_v0-3/`](mate_point_UART_v0-3/) (Nobana validado en banco)  
 **Plataforma:** Waveshare ESP32-S3-Touch-LCD-7B + TXS0108E → Nobana  
-**Última actualización:** 2026-06-05  
-**Estado v0-3.0:** **E2E parcial** — Test1; baseline superseded por v0-3-1  
-**Estado v0-3-1:** **E2E banco OK** — Test1 2026-06-05 · [`2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md)  
-**Estado v0-3-2:** **Implementado** — fork v0-3-1; banco pendiente  
-**Producto vigente (banco):** [`mate_point_v0-3-1/`](mate_point_v0-3-1/)  
-**Desarrollo:** [`mate_point_v0-3-2/`](mate_point_v0-3-2/)
+**Última actualización:** 2026-06-17  
+**Estado v0-3-4:** **E2E banco OK** — Test1 2026-06-17 · [`2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md)  
+**Producto vigente (banco):** [`mate_point_v0-3-4/`](mate_point_v0-3-4/)
 
 | Documento | Uso |
 |-----------|-----|
@@ -347,6 +345,21 @@ Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uar
 - Notificar abort por MQTT al servidor.
 - Campo `volume_ml`, tanque vacío en UI, TLS.
 
+**Superseded:** [`mate_point_v0-3-4`](mate_point_v0-3-4/) — VL53L0X + gate Iniciar (§17).
+
+### 11.5 v0-3-4 (`mate_point_v0-3-4/`) — **validado Test1 2026-06-17**
+
+- [x] VL53L0X @ I2C 0x29; offset **85 mm**; umbral **15 mm** corregido.
+- [x] Post-pago: **Coloque el termo** / **Iniciar**; MQTT `idle` hasta Iniciar.
+- [x] **Iniciar** → dispensado + MQTT `dispensing`; countdown desde tap.
+- [x] Retiro termo pre-Iniciar → mensaje; dispensando → **auto-Parar**.
+- [x] Regresión v0-3-3: Parar, fin natural, 2.ª compra.
+- [~] Timeout post-pago 2 min — no Test1.
+- [~] Sniffer TX — pendiente (hereda v0-3-3).
+
+Captura: [`2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md)  
+Plan: [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md)
+
 ---
 
 ## 13. Registro de validación banco
@@ -357,6 +370,7 @@ Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uar
 | 2026-06-05 | [`2026-06-05-Waveshare-Mate_point-v0-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3_Test1.md) | Producto [`mate_point_v0-3`](mate_point_v0-3/) — E2E pago MP + Nobana + 2.ª compra | **Parcial** |
 | 2026-06-05 | [`2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-1_Test1.md) | Producto [`mate_point_v0-3-1`](mate_point_v0-3-1/) — timer MQTT, terminado → Listo | **OK** |
 | 2026-06-05 | [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) | Producto [`mate_point_v0-3-3`](mate_point_v0-3-3/) — Parar, timer natural, 2.ª compra tras Parar | **E2E OK** |
+| 2026-06-17 | [`2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md) | Producto [`mate_point_v0-3-4`](mate_point_v0-3-4/) — VL53L0X, Iniciar, auto-Parar, offset 85 mm | **E2E OK** |
 
 ### Validado en Test1 v0-3-3 (2026-06-05)
 
@@ -364,6 +378,13 @@ Captura: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uar
 - **Fin natural** timer MQTT: countdown → **terminado** → **Listo** → **Comprar**.
 - **Segunda compra** tras Parar: funcional; requiere esperar countdown a cero antes de volver a **Comprar**.
 - E2E pago sandbox + Nobana en banco; sin sniffer TX.
+
+### Validado en Test1 v0-3-4 (2026-06-17)
+
+- Post-pago: **Coloque el termo** / **Iniciar**; MQTT **`idle`** hasta Iniciar; offset VL53L0X **85 mm**.
+- **Iniciar** → dispensado + countdown desde tap; **auto-Parar** por retiro de termo.
+- Regresión v0-3-3: Parar, fin natural, 2.ª compra.
+- E2E pago sandbox + Nobana + VL53L0X en banco; sin sniffer TX.
 
 ### Validado en Test1 v0-3-1 (2026-06-05)
 
@@ -695,6 +716,35 @@ Captura Test1: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/noba
 
 ---
 
+## 17. `mate_point_v0-3-4` — VL53L0X + gate Iniciar
+
+**Carpeta:** [`mate_point_v0-3-4/`](mate_point_v0-3-4/) — fork de [`mate_point_v0-3-3/`](mate_point_v0-3-3/).  
+**Plan detallado:** [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md)  
+**Captura Test1:** [`2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md)
+
+### 17.1 Objetivo
+
+Entre el pago QR y el dispensado físico: validar termo (VL53L0X), pantalla **Coloque el termo** / botón **Iniciar**, MQTT `dispensing` solo al pulsar Iniciar, auto-Parar si retiran el termo. Hereda ciclo dispensado v0-3-3.
+
+### 17.2 Calibración sensor (banco)
+
+| Constante | Valor |
+|-----------|--------|
+| `TERMO_OFFSET_MM` | **85** |
+| `TERMO_PRESENT_MAX_MM` | **15** (sobre distancia corregida) |
+
+### 17.3 Criterios Test1 (2026-06-17)
+
+| ID | Resultado |
+|----|-----------|
+| V1–V8, V10–V11 | [x] |
+| V9 timeout post-pago | [ ] no Test1 |
+| V12 fallo sensor | [ ] no Test1 |
+
+**Producto vigente (banco):** [`mate_point_v0-3-4/`](mate_point_v0-3-4/)
+
+---
+
 ## Changelog
 
 | Fecha | Cambio |
@@ -708,3 +758,5 @@ Captura Test1: [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/noba
 | 2026-06-05 | **§16 `mate_point_v0-3-3`** — Parar pre-stop 200 ms; UI contrato desacoplado (terminado en countdown 0); T_viva viva |
 | 2026-06-05 | **v0-3-3 Test1 OK** — banco Nobana; corte Parar ~300–500 ms; captura [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
 | 2026-06-05 | **v0-3-3 Test1 E2E completo** — fin natural timer + 2.ª compra tras Parar (countdown a 0) |
+| 2026-06-17 | **§17 `mate_point_v0-3-4`** — VL53L0X, gate Iniciar, offset 85 mm; Test1 E2E OK |
+| 2026-06-17 | **v0-3-4 Test1 OK** — captura [`2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md) |

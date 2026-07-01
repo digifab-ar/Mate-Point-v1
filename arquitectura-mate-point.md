@@ -114,69 +114,64 @@ ERROR ──[toque "cancelar"]─────────→ IDLE
 
 ---
 
-## 3. Configuración Wi-Fi (v1)
+## 3. Configuración Wi-Fi (producto v0-6+)
 
-La configuración de red en la **primera versión** se realiza exclusivamente por **USB Type-C** y **monitor serie** (Arduino IDE u otra terminal). No hay portal cautivo ni formulario en la pantalla táctil.
+**Firmware:** [`mate_point_v0-6/`](../mate_point_firmware/mate_point_v0-6/) · Plan: [`PLAN-MATE-POINT-v0-6.md`](../mate_point_firmware/PLAN-MATE-POINT-v0-6.md)
+
+El **dueño del local** configura la red desde la **pantalla táctil** y un **celular**. No se usa USB ni monitor serie.
 
 | Parámetro | Valor |
 |-----------|-------|
-| Interfaz | USB Type-C → UART de programación/debug del módulo Waveshare |
-| Baudrate | **115200** |
-| Timeout de conexión | **15 s** por intento |
-| Persistencia | SSID y contraseña en **NVS** solo tras validar conexión exitosa |
-| Contraseña en terminal | **Visible** en el monitor serie (sin enmascarado) |
+| Operador | Dueño del local |
+| Persistencia | NVS namespace `mate_cfg` — claves `wifi_ssid`, `wifi_pass` |
+| Criterio guardado | Solo tras **asociación STA exitosa** en el portal (no exige MQTT) |
+| MQTT | Fijo en `config.h` (`broker.hivemq.com:1883`) — no configurable |
+| AP provisioning | `MatePoint-XXXX` (abierto) · IP `192.168.4.1` |
+| Timeout provisioning | 10 min → cierra AP, vuelve a Error Wi-Fi |
+| Post-éxito | `ESP.restart()` |
 
-### 3.1 Monitor serie — estado continuo
-
-Desde el arranque, el firmware imprime en serie el estado de Wi-Fi y los **reintentos** de conexión (cuando hay credenciales en NVS o tras un comando `wifi`):
-
-```
-WiFi: desconectado — reintento 1/5...
-WiFi: desconectado — reintento 2/5...
-WiFi: conectado — SSID "MiLocal_2.4G"  IP 192.168.1.42  RSSI -58 dBm
-```
-
-Si no hay credenciales válidas en NVS, se indica que hay que ejecutar el comando `wifi`.
-
-### 3.2 Comando `wifi`
-
-El comando **`wifi`** está **siempre disponible** (también con credenciales ya guardadas), para cambiar de red sin re-flashear el firmware.
-
-Flujo interactivo:
+### 3.1 Flujo dueño del local
 
 ```
-> wifi
-Red: MiLocal_2.4G
-Password: mi_clave_secreta
-WiFi: conectando — intento 1...
-WiFi: conectando — intento 2...
-WiFi: conectado — red: MiLocal_2.4G  IP 192.168.1.42  RSSI -58 dBm
-MQTT: conectado
-Credenciales guardadas en NVS.
+Error Wi-Fi → Configurar red → pantalla CONFIGURAR RED
+  → celular conecta MatePoint-XXXX
+  → navegador 192.168.4.1 (portal Mate Point)
+  → elegir red 2.4 GHz + contraseña → Conectar
+  → NVS guardado → reinicio → operación normal
 ```
 
-| Paso | Comportamiento |
-|------|----------------|
-| 1 | Solicita **nombre de red** (`Red:`). **Enter** confirma y pasa al siguiente paso (sin prompt adicional). |
-| 2 | Solicita **contraseña** (`Password:`), visible en el monitor serie. **Enter** confirma e inicia la conexión. |
-| 3 | Intenta conectar a Wi-Fi; en serie se muestran mensajes **conectando** y **reintentos** hasta éxito o timeout. |
-| 4 | Si la conexión Wi-Fi es exitiva, intenta **MQTT** y reporta `MQTT: conectado` o el error correspondiente. |
-| 5 | **Solo si** Wi-Fi (y la validación definida en firmware) fue exitosa: **escribe SSID y contraseña en NVS**. Si falla (SSID inexistente, contraseña incorrecta, timeout 15 s), **no** se actualiza NVS y se mantienen las credenciales anteriores si existían. |
+**Cancelar** en pantalla cierra el AP. **Error en servidor** = contactar proveedor (Wi-Fi OK).
 
-### 3.3 Timeouts y reintentos
+### 3.2 Pantallas UI
 
-- Cada intento de asociación a la red configurada tiene un **timeout de 15 segundos**.
-- Los reintentos durante `wifi` y en arranque normal se loguean en serie con numeración (`intento 1`, `intento 2`, …).
-- Tras agotar reintentos en el flujo `wifi`, mensaje de error en serie; el operador puede volver a ejecutar `wifi`.
+| Pantalla | Acción |
+|----------|--------|
+| Error Wi-Fi | CTA **Configurar red** |
+| Error servidor | Card **Consulta al proveedor** (reconexión MQTT automática) |
+| Configurar red | Instrucciones + **Cancelar** |
 
-### 3.4 Relación con la UI
+Figma: [`UI/figma/pantallas/`](../UI/figma/pantallas/) — `Error-wifi.png`, `Error-mqtt.png`, `Configurar red.png`.
 
-- El **footer** de pantalla (WiFi ● / MQTT ●) refleja el mismo estado que el monitor serie, para operación en campo sin laptop.
-- La configuración de red **no** usa pantallas LVGL; la pantalla puede mostrar un mensaje genérico de “sin red” si no hay conexión, sin teclado de SSID/clave.
+### 3.3 Migración / primera instalación
 
-### 3.5 Evolución futura (fuera de v1)
+- Flashear v0-6 → NVS Wi-Fi vacío → reprovisionar desde pantalla.
+- Sin `WIFI_SSID` / `WIFI_PASSWORD` en código de producción.
 
-Alternativas documentadas para versiones posteriores: portal HTML vía SoftAP desde celular, o herramienta `nvs_partition_gen` en fábrica. La v1 no las implementa.
+### 3.4 Histórico — configuración USB (POC, supersedido)
+
+<details>
+<summary>v1 planificada (no implementada en producto)</summary>
+
+La configuración por **USB Type-C + monitor serie** y comando `wifi` quedó documentada para POC pero fue **reemplazada por SoftAP + portal** en v0-6.
+
+| Parámetro | Valor (histórico) |
+|-----------|-------------------|
+| Interfaz | USB Type-C → UART debug |
+| Baudrate | 115200 |
+| Comando | `wifi` interactivo |
+| Persistencia | NVS tras validar conexión |
+
+</details>
 
 ---
 
@@ -301,6 +296,7 @@ PubSubClient       ← cliente MQTT (o AsyncMQTT)
 | 2026-05-22 | Documento creado a partir de la reorganización de `modulo-waveshare-esp32s3-touch-7b.md` |
 | 2026-05-26 | Referencia agregada al dispensador Nobana (`dispensador-nobana.md`) como base de hardware |
 | 2026-05-27 | Referencias actualizadas: §2.2 apunta a `arquitectura-hardware.md` §2.3 para comandos UART. Dependencias §5 actualizadas con nuevo `arquitectura-hardware.md` |
+| 2026-06-25 | §3 **Supersedido** — configuración Wi-Fi producto v0-6: SoftAP + portal web + NVS; dueño del local; sin USB |
 | 2026-05-27 | §3 Configuración Wi-Fi v1: USB-C + monitor serie 115200, comando `wifi`, NVS tras validar, timeout 15 s, logs de reintentos, MQTT al conectar |
 | 2026-05-27 | §3.2: Red y Password se confirman solo con Enter (sin paso `¿Confirmar?`) |
 | 2026-05-29 | §4 topics: v0.2 (`mate_point_v0-2`) Comprar + QR PROGMEM; §5 estructura firmware actualizada |

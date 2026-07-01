@@ -2,7 +2,7 @@
 
 **Proyecto:** Mate Point — Dispensador de agua caliente  
 **OT:** OT-00268 — Etapa 3  
-**Última actualización:** 2026-05-27
+**Última actualización:** 2026-06-24
 
 ---
 
@@ -24,7 +24,7 @@
 │  │  TXS0108E    │  ← level shift 3.3V↔5V   │ Sensor nivel │ │
 │  │  (3.3V↔5V)   │                           │ recipiente   │ │
 │  └──────┬───────┘                           │ de goteo     │ │
-│         │ UART 5V                           │ (float/XKC)  │ │
+│         │ UART 5V                           │ (reed NO)    │ │
 │  ┌──────▼───────┐                           └──────────────┘ │
 │  │  PCB Nobana  │  ← ctrl electrónica                        │
 │  │ (dispensador)│    calentamiento y dispensado              │
@@ -103,7 +103,7 @@ Con **GP6 como único GPIO libre**, la asignación de sensores y periféricos qu
 | Interfaz | Asignación | Componente | Notas |
 |----------|-----------|------------|-------|
 | **UART2** (PH2.0) | PCB Nobana | — + TXS0108E | Comunicación principal con el dispensador |
-| **GPIO GP6** (PH2.0) | Sensor recipiente goteo | Float switch / XKC-Y25 | Digital — HIGH = lleno |
+| **GPIO GP6** (PH2.0) | Sensor bandeja de goteo | Flotante + **reed NO** | Digital — **HIGH** = seguro · **LOW** = llena |
 | **I2C** (PH2.0) | Sensor de proximidad | VL53L0X (0x29) | ToF, detecta recipiente bajo el dispensador |
 | **I2C** (PH2.0) | GT911 táctil | — | Integrado, no liberar |
 | **I2C** (PH2.0) | CH422G IO expander | — | Integrado, no liberar |
@@ -123,9 +123,14 @@ Waveshare ESP32-S3-Touch-7B
 │               ├── CH422G (0x24)            ← IO expander (integrado)
 │               └── VL53L0X (0x29)           ← sensor de proximidad
 │
-├── GPIO PH2.0 ─── GP6 ──────────────────── Sensor nivel recipiente goteo
+├── GPIO PH2.0 ──┬── 3V3 ──[10 kΩ]──┬── GP6 (GPIO_NUM_6)   ← sensor bandeja (§3.4)
+│               │                  └── reed NO ── GND
+│               └── GND
 │
 ├── RS-485 PH2.0 ─────────────────────────── [reserva]
+└── CAN PH2.0 ────────────────────────────── [reserva]
+```
+
 └── CAN PH2.0 ────────────────────────────── [reserva]
 ```
 
@@ -148,6 +153,36 @@ Si en el futuro se requieren señales digitales adicionales (botones físicos de
 - 8 GPIOs adicionales a 3.3V (o 5V según VCC del chip)
 - Sin cambios de hardware en el módulo Waveshare
 
+### 3.4 Sensor bandeja de goteo — reed switch @ GPIO6
+
+Montaje validado en prototipo (2026-06-24). Esquema: [`docs/hardware/sensor-bandeja-reed-gpio6.png`](docs/hardware/sensor-bandeja-reed-gpio6.png).
+
+| Ítem | Valor |
+|------|--------|
+| Conector Waveshare | PH2.0 **GPIO** — pines **3V3**, **GND**, **GP6** |
+| Pin firmware | `GPIO_NUM_6` |
+| Sensor | Flotante con **reed switch normalmente abierto (NO)** |
+| Pull-up | Resistencia **10 kΩ** entre **3V3** y nodo **GPIO6** (externa al módulo) |
+| Reed | Un terminal al nodo GPIO6; el otro a **GND** |
+| Imán | Integrado en el flotante — al subir cierra el reed |
+
+**Cableado (pull-up externo):**
+
+```
+3V3 ──[10 kΩ]──┬── GPIO6 (GP6)     ← nodo leído por firmware
+               │
+               └── reed NO ── GND
+```
+
+| Condición física | Reed | GPIO6 |
+|------------------|------|-------|
+| Bandeja **segura** (flotante abajo, poco agua) | **Abierto** | **HIGH** (3,3 V vía 10 kΩ) |
+| Bandeja **llena** (flotante arriba, imán activo) | **Cerrado** | **LOW** (derivado a GND) |
+
+Firmware v0-5: poll cada **5 s**; `DRIP_TRAY_FULL_LEVEL = LOW`. Ver [`mate_point_firmware/PLAN-MATE-POINT-v0-5.md`](mate_point_firmware/PLAN-MATE-POINT-v0-5.md).
+
+> El reed **NO** implica circuito abierto en reposo (bandeja segura). No confundir con el sensor de **tanque de agua** del Nobana, que se lee por **UART** (`b2` / byte 7 en `PROTOCOLO-UART-NOBANA.md` §4.4).
+
 ---
 
 ## 4. Relación con otros documentos
@@ -158,6 +193,8 @@ Si en el futuro se requieren señales digitales adicionales (botones físicos de
 | `modulo-waveshare-esp32s3-touch-7b.md` | Especificaciones del módulo ESP32-S3 (pinout, entorno de desarrollo) |
 | `arquitectura-mate-point.md` | Máquina de estados del firmware; el estado `DISPENSING` se materializa enviando el comando UART al Nobana (ver §2.3) |
 | `plan-de-implementacion.md` | Plan de fases; incluye el relevamiento UART del Nobana como prerrequisito de Fase 4 |
+| `mate_point_firmware/PLAN-MATE-POINT-v0-5.md` | Firmware sensor bandeja — poll, UI error, auto-Parar |
+| `docs/hardware/sensor-bandeja-reed-gpio6.png` | Esquema cableado reed + pull-up 10 kΩ @ GPIO6 |
 
 ---
 
@@ -165,5 +202,6 @@ Si en el futuro se requieren señales digitales adicionales (botones físicos de
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-06-24 | §3.4 — Cableado validado reed NO @ GPIO6: pull-up **10 kΩ** a 3V3, reed a GND; **HIGH** = seguro, **LOW** = llena; esquema en `docs/hardware/` |
 | 2026-05-27 | Documento creado — consolidación de arquitectura hardware desde `dispensador-nobana.md` y `modulo-waveshare-esp32s3-touch-7b.md` |
 | 2026-05-27 | §1 — Diagrama de visión general expandido: TXS0108E (level shift UART), VL53L0X (I2C proximidad), sensor de nivel recipiente de goteo (GP6) |

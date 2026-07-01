@@ -3,7 +3,7 @@
 **Proyecto:** Mate Point — OT-00268 Etapa 3  
 **Base hardware producto:** Waveshare ESP32-S3-Touch-LCD-7B  
 **Device ID:** `MATEPOINT001`  
-**Última actualización:** 2026-06-05  
+**Última actualización:** 2026-06-25  
 
 | Hito | Estado |
 |------|--------|
@@ -13,9 +13,15 @@
 | UART Waveshare auto [`mate_point_UART_v0-3`](mate_point_UART_v0-3/) | **Completado en banco** (2026-06-04) — §16 |
 | Producto [`mate_point_v0-3`](mate_point_v0-3/) — UI + MQTT + Nobana (v0-3.0) | **Superseded** — baseline Test1 parcial |
 | Producto [`mate_point_v0-3-1`](mate_point_v0-3-1/) — timer MQTT | **E2E OK** Test1 2026-06-05 · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §11.2 |
-| Producto [`mate_point_v0-3-2`](mate_point_v0-3-2/) — UI dispensado + Parar | **Planificado** · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §15 |
+| Producto [`mate_point_v0-3-2`](mate_point_v0-3-2/) — UI dispensado + Parar | **Implementado** · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §15 |
+| Producto [`mate_point_v0-3-4`](mate_point_v0-3-4/) — VL53L0X + Iniciar | **E2E OK** Test1 2026-06-17 · [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md) |
+| Producto [`mate_point_v0-4`](mate_point_v0-4/) — UI Figma | **OK hardware** 2026-06-18 · iteración tipografía/layout **implementada** · pendiente validación visual + Test1 banco · [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) · [`UI-DISCREPANCIAS-v0-4.md`](UI-DISCREPANCIAS-v0-4.md) |
+| Producto [`mate_point_v0-5`](mate_point_v0-5/) — sensor bandeja GPIO6 | **E2E OK** Test1 2026-06-24 · [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md) |
+| Producto [`mate_point_v0-5-1`](mate_point_v0-5-1/) — error agua UART | **E2E OK** banco 2026-06-24 (V6/V7) · [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md) |
+| Producto [`mate_point_v0-5-2`](mate_point_v0-5-2/) — pausa / reanudar Cargar termo | **Implementado** — UI pausa OK hardware · [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) |
+| Producto [`mate_point_v0-6`](mate_point_v0-6/) — Wi-Fi SoftAP + portal web (NVS) | **E2E OK** hardware 2026-06-25 · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) · [`mate_point_v0-6/README.md`](mate_point_v0-6/README.md) |
 
-Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) · [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js)
+Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) · [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md) · [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) · [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md) · [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md) · [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) · [`UI-DISCREPANCIAS-v0-4.md`](UI-DISCREPANCIAS-v0-4.md) · [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js) · [`UI/figma/`](../UI/figma/)
 
 ---
 
@@ -62,7 +68,7 @@ Detalle de archivos y conversor LVGL: **§15**.
 | 1 | Heartbeat `status` (cada 30 s) | Publicar **último estado conocido** (`idle` o `dispensing`) |
 | 2 | Fin de ciclo MQTT | Tras `duration_ms` → UI **"terminado"** → **3 s** → UI **"Listo"** → recién ahí **`state: idle`** |
 | 3 | Segundo `dispense` en curso | **Fuera de alcance** en esta iteración (no UI error, no `state: error`) |
-| 4 | Wi‑Fi | **Hardcoded** en `config.h`; comando serie `wifi` + NVS **después** |
+| 4 | Wi‑Fi | **v0-6:** NVS + SoftAP + portal web (dueño del local); sin USB. **v0-5-2 y anteriores:** hardcoded en `config.h` |
 | 5 | `device_id` en `status` | String **`"MATEPOINT001"`** (igual que `DEVICE_ID`) |
 | 6 | `external_reference` en `command` | Campo opcional del servidor; **ignorar** o log Serial; no UI ni `status` |
 | 7 | Comandos duplicados (QoS 1 / reconnect) | **Deduplicar por `order_id`** — si ya se procesó, ignorar |
@@ -204,7 +210,13 @@ Si tu demo 13 usa **`esp_display_panel.hpp`** en lugar de `rgb_lcd_port`, copiá
 ```
 mate_point_firmware/
 ├── PLAN-IMPLEMENTACION.md          ← este documento (índice maestro)
-├── PLAN-MATE-POINT-v0-3.md         ← producto Waveshare UI + Nobana (próximo)
+├── PLAN-MATE-POINT-v0-3.md         ← producto Waveshare UI + Nobana
+├── PLAN-MATE-POINT-v0-3-4.md       ← VL53L0X + gate Iniciar (E2E OK)
+├── PLAN-MATE-POINT-v0-4-UI.md      ← UI Figma v0-4
+├── PLAN-MATE-POINT-v0-5.md         ← sensor bandeja GPIO6 (reed NO)
+├── PLAN-MATE-POINT-v0-5-1.md       ← error agua UART (E2E OK)
+├── PLAN-MATE-POINT-v0-5-2.md       ← pausa / reanudar (cooldown pausa 5 s)
+├── UI-DISCREPANCIAS-v0-4.md        ← Spec tipografía/layout vs Figma (implementado)
 ├── PROTOCOLO-UART-NOBANA.md        ← diccionario bus UART
 ├── PLAN-POC-NOBANA-UART.md         ← POC Etapa 1 replay (ESP32 v0-1)
 ├── PLAN-MATE-POINT-UART-v0-2.md    ← POC kiosco W/S/R (ESP32 UART v0-2)
@@ -214,6 +226,10 @@ mate_point_firmware/
 ├── mate_point_v0-1/                ← MQTT + UI simulada
 ├── mate_point_v0-2/                ← Comprar + QR + MQTT (dispensado simulado)
 ├── mate_point_v0-3/                ← producto: v0-2 + driver Nobana
+├── mate_point_v0-4/                ← UI Figma
+├── mate_point_v0-5/                ← sensor bandeja GPIO6
+├── mate_point_v0-5-1/              ← error agua UART
+├── mate_point_v0-5-2/                ← pausa / reanudar
 ├── mate_point_UART_v0-1/           ← POC UART Etapa 1 cerrada
 ├── mate_point_UART_v0-2/           ← POC UART kiosco (sin lock 23)
 └── mate_point_UART_v0-3/           ← POC UART Waveshare auto (cerrada banco)
@@ -384,7 +400,7 @@ Pago sandbox → webhook → servidor publica `command` → misma secuencia en p
 | 4.3 tarea 15 | Segundo `dispense` / pantalla Ocupado |
 | Fase 5 | QR, `qr_show`, cancel, 5 pantallas |
 | Fase 6 | Broker TLS, credenciales prod |
-| Wi‑Fi v1 | Comando serie `wifi` + NVS (`arquitectura-mate-point.md` §3) |
+| Wi‑Fi v1 (USB + serie) | ~~Comando serie `wifi` + NVS~~ — **supersedido por v0-6** SoftAP + portal ([`arquitectura-mate-point.md`](../arquitectura-mate-point.md) §3) |
 
 ---
 
@@ -599,6 +615,12 @@ Resumen de la cadena UART; **detalle normativo del bus** en [`PROTOCOLO-UART-NOB
 | **2b-1** | [`mate_point_v0-3-1/`](mate_point_v0-3-1/) · [PLAN §14](PLAN-MATE-POINT-v0-3.md) | **OK** Test1 2026-06-05 | `duration_ms` MQTT; **terminado** → **Listo** → Comprar |
 | **2b-2** | [`mate_point_v0-3-2/`](mate_point_v0-3-2/) · [PLAN §15](PLAN-MATE-POINT-v0-3.md) | Implementado | UI dispensado: **T_viva**, countdown, **Parar** (§7.4 manual ~1,8 s) |
 | **2b-3** | [`mate_point_v0-3-3/`](mate_point_v0-3-3/) · [PLAN §16](PLAN-MATE-POINT-v0-3.md) | **E2E OK** Test1 2026-06-05 | Parar, timer natural, 2.ª compra tras Parar |
+| **2b-4** | [`mate_point_v0-3-4/`](mate_point_v0-3-4/) · [PLAN v0-3-4](PLAN-MATE-POINT-v0-3-4.md) | **E2E OK** Test1 2026-06-17 | VL53L0X, Iniciar, auto-Parar, offset 85 mm |
+| **2b-5** | [`mate_point_v0-4/`](mate_point_v0-4/) · [PLAN UI v0-4](PLAN-MATE-POINT-v0-4-UI.md) · [Spec UI](UI-DISCREPANCIAS-v0-4.md) | **OK hardware** 2026-06-18 | UI Figma; tipografía/layout iteración 2; litros; rotación 180°; pendiente validación visual + Test1 banco |
+| **2b-6** | [`mate_point_v0-5/`](mate_point_v0-5/) · [PLAN v0-5](PLAN-MATE-POINT-v0-5.md) | **E2E OK** Test1 2026-06-24 | Sensor bandeja reed NO @ GPIO6; poll 5 s; error bloqueante; auto-Parar + `order_cancel` |
+| **2b-7** | [`mate_point_v0-5-1/`](mate_point_v0-5-1/) · [PLAN v0-5-1](PLAN-MATE-POINT-v0-5-1.md) | **E2E OK** banco 2026-06-24 (V6/V7) | Tanque vacío UART (`b2=0x10`, byte 7); `UI_ERR_AGUA`; `ensure_tank_monitor_poll()` |
+| **2b-8** | [`mate_point_v0-5-2/`](mate_point_v0-5-2/) · [PLAN v0-5-2](PLAN-MATE-POINT-v0-5-2.md) | **Implementado** — UI pausa OK hardware | Pausa: cooldown **5 s**; Continuar oculto → visible; Finalizar fijo; timer 20 s |
+| **2b-9** | [`mate_point_v0-6/`](mate_point_v0-6/) · [PLAN v0-6](PLAN-MATE-POINT-v0-6.md) | **E2E OK** hardware 2026-06-25 | Wi-Fi NVS + SoftAP + portal web; pantallas Error-wifi / Error-mqtt / Configurar red |
 | *(ref)* | [`mate_point_v0-2/`](mate_point_v0-2/) | Completado | Dispensado simulado — base de fork v0-3 |
 
 | Tema | Referencia |
@@ -613,20 +635,54 @@ Resumen de la cadena UART; **detalle normativo del bus** en [`PROTOCOLO-UART-NOB
 
 ---
 
-## 17. Producto `mate_point_v0-3` … `mate_point_v0-3-3` (índice)
+## 17. Producto `mate_point_v0-3` … `mate_point_v0-5-2` (índice)
 
-Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Roadmap UART: [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) §11–§13.
+Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Plan v0-3-4: [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md). Plan UI v0-4: [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md). Plan v0-5: [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md). Plan v0-5-1: [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md). Plan v0-5-2: [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md). Plan v0-6: [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md).
 
-| Tema | v0-3-1 — **banco OK** | v0-3-2 | v0-3-3 — **banco OK** |
-|------|----------------------|--------|------------------------|
-| Base | Fork v0-3.0 | Fork v0-3-1 | Fork v0-3-2 |
-| UI dispensado | Texto **Dispensado** | **`83°`** + countdown + **Parar** | Igual v0-3-2 |
-| Parar pre-stop | — | ~**1800 ms** (§7.4 ARMOR) | ~**200 ms** — corte ~**300–500 ms** |
-| UI **terminado** | Al fin stop | Al fin stop (`stop_done`) | Al **countdown 0** |
-| Post-Parar sin flujo | — | UI cambia pronto | Countdown sigue (validado Test1) |
-| T_viva tras Parar | — | Hasta fin stop UI | **Viva** (validado Test1) |
-| MQTT al Parar | — | Sin publish | Sin publish |
-| Validación | Test1 OK | Superseded | **E2E OK** — Parar + timer + 2.ª compra [`Test1`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
+| Tema | v0-3-3 — **banco OK** | v0-3-4 — **banco OK** | v0-4 — **hardware OK** | v0-5 — **banco OK** |
+|------|------------------------|------------------------|-------------------------|-------------------------|
+| Base | Fork v0-3-2 | Fork v0-3-3 | Fork v0-3-4 | Fork v0-4 |
+| Post-pago | Dispensado inmediato | **Coloque el termo** / **Iniciar** | Igual v0-3-4 | Igual v0-4 |
+| Sensor termo | — | VL53L0X; offset **85 mm**; `< 15 mm` corr. | Igual v0-3-4 | Igual v0-4 |
+| Sensor bandeja | — | — | UI `UI_ERR_BANDEJA` sin trigger | Reed NO @ **GPIO6**; poll **5 s**; error bloqueante |
+| MQTT `dispensing` | Al pago | Solo al **Iniciar** | Igual v0-3-4 | Igual v0-4 |
+| Termo retirado | — | Pre-Iniciar: mensaje; dispensando: auto-Parar | Igual v0-3-4 | Igual v0-4 |
+| Bandeja llena | — | — | — | Auto-Parar + **`order_cancel`**; sin Finish; recuperación Standby |
+| Dispensado activo | Parar 200 ms; terminado @ countdown 0 | Igual v0-3-3 | Igual v0-3-4 | Igual v0-4 |
+| UI | Placeholder LVGL | Placeholder LVGL | **Figma** 1024×600; litros; WiFi/MQTT bloqueante; **rotación 180°** | Igual v0-4 |
+| Flash | ~2 MB APP | ~2 MB APP | **~6.4 MB** → partición custom 8 MB APP | Igual v0-4 |
+| Validación | [`Test1`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) | [`Test1`](../tools/nobana_uart_sniffer/capturas/2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md) | E2E funcional Waveshare 2026-06-18; Test1 banco pendiente | [`Test1`](../tools/nobana_uart_sniffer/capturas/2026-06-24-Waveshare-Mate_point-v0-5_Test1.md) |
+
+Assets UI: [`../UI/figma/`](../UI/figma/) · Wireframe: [Figma Mate Point](https://www.figma.com/design/TmPeOvLv6q247UMZsAD8fl/Mate-Point?node-id=0-1)
+
+### 17.1 Producto v0-5-1 … v0-5-2
+
+| Tema | v0-5-1 — **banco OK** | v0-5-2 — **implementado** |
+|------|------------------------|-------------------------|
+| Base | Fork v0-5 | Fork v0-5-1 |
+| Tanque vacío | UART `b2=0x10` + byte 7; `UI_ERR_AGUA`; poll en error | Hereda v0-5-1 |
+| Bandeja llena | Hereda v0-5 | Hereda v0-5-1 |
+| Parar | Fin abrupto Nobana; contrato UI sigue hasta `duration_ms` | **Pausa** — abort corto + cooldown **5 s**; fase `PAUSED` |
+| UI Cargar termo (dispensando) | Solo **Parar** | Igual v0-5-1 |
+| UI Cargar termo (pausado) | — | Cooldown: solo **Finalizar**; luego **Continuar** + **Finalizar** — [`Cargar-termo-pause.png`](../UI/figma/pantallas/Cargar-termo-pause.png) |
+| Continuar en pausa | — | Oculto durante cooldown (~7 s); `display_ui_set_continuar_visible` |
+| Timer decisión pausa | — | **20 s**; reinicia en cada pausa |
+| Reanudar | — | `nobana_dispense_start(remaining_ms)` tras cooldown |
+| Fin por presupuesto | Cierre gradual Nobana | Igual; sin `order_cancel` |
+| Retiro termo (dispensando) | Auto-Parar; contrato UI sigue | **Cierre sesión** → Finish |
+| Validación | V6/V7 banco · [`PLAN v0-5-1`](PLAN-MATE-POINT-v0-5-1.md) §12 | Test1 banco pendiente · [`PLAN v0-5-2`](PLAN-MATE-POINT-v0-5-2.md) §12 |
+
+### 17.2 Producto v0-6 — Wi-Fi provisioning
+
+| Tema | v0-6 — **E2E OK** hardware 2026-06-25 |
+|------|----------------------------------------|
+| Base | Fork v0-5-2 |
+| Wi-Fi | NVS (`mate_cfg`); sin credenciales en `config.h` |
+| Provisioning | SoftAP `MatePoint-XXXX` + portal `192.168.4.1` + `ESP.restart()` |
+| UI conectividad | `Error-wifi` (CTA Configurar red) · `Error-mqtt` (proveedor) · `Configurar red` |
+| MQTT | Fijo `broker.hivemq.com:1883` |
+| Herencia | Pausa/reanudar, bandeja, agua UART, VL53L0X, E2E compra |
+| Doc | [`mate_point_v0-6/README.md`](mate_point_v0-6/README.md) · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) |
 
 ---
 
@@ -634,6 +690,21 @@ Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Roadmap UA
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-06-25 | **v0-6 E2E OK hardware** — Wi-Fi NVS + SoftAP + portal; doc [`mate_point_v0-6/README.md`](mate_point_v0-6/README.md) · [`arquitectura-mate-point.md`](../arquitectura-mate-point.md) §3 |
+| 2026-06-24 | **v0-5-2 UI pausa** — Continuar oculto en cooldown; solo Finalizar; visible tras ~7 s |
+| 2026-06-24 | **v0-5-2 fix pausa** — `abort_pause` cooldown 5 s; `standby_enable` al reanudar |
+| 2026-06-24 | **Etapa 2b-8 implementada** — [`mate_point_v0-5-2/`](mate_point_v0-5-2/) pausa/reanudar; Test1 banco pendiente |
+| 2026-06-24 | **Etapa 2b-8 planificada** — [`mate_point_v0-5-2/`](mate_point_v0-5-2/) pausa/reanudar Cargar termo; plan [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) |
+| 2026-06-24 | **Etapa 2b-7** — [`mate_point_v0-5-1/`](mate_point_v0-5-1/) error agua UART; E2E OK banco (V6/V7); índice §16 |
+| 2026-06-24 | **Etapa 2b-6 E2E OK** — [`mate_point_v0-5/`](mate_point_v0-5/); captura [`2026-06-24-Waveshare-Mate_point-v0-5_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-24-Waveshare-Mate_point-v0-5_Test1.md) |
+| 2026-06-24 | **Etapa 2b-6 implementada** — [`mate_point_v0-5/`](mate_point_v0-5/); sensor bandeja GPIO6; Test1 banco pendiente |
+| 2026-06-24 | **Cableado bandeja documentado** — reed NO @ GPIO6, pull-up 10 kΩ; esquema [`docs/hardware/sensor-bandeja-reed-gpio6.png`](../docs/hardware/sensor-bandeja-reed-gpio6.png); [`arquitectura-hardware.md`](../arquitectura-hardware.md) §3.4 · [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md) |
+| 2026-06-24 | **Etapa 2b-6 planificada** — [`mate_point_v0-5/`](mate_point_v0-5/) sensor bandeja reed NO @ GPIO6; plan [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md) |
+| 2026-06-18 | **Iteración tipografía/layout v0-4** — fuentes 20/32/36 px, fondos QR, títulos naranja/verde, ícono stop; doc [`UI-DISCREPANCIAS-v0-4.md`](UI-DISCREPANCIAS-v0-4.md) · [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) §18 |
+| 2026-06-18 | **Etapa 2b-5 OK hardware** — [`mate_point_v0-4/`](mate_point_v0-4/); UI Figma + rotación 180° + partición 8 MB; E2E funcional Waveshare; doc [`README`](mate_point_v0-4/README.md) · [`UI/ASSETS.md`](../UI/ASSETS.md) |
+| 2026-06-18 | **Etapa 2b-5 implementada** — [`mate_point_v0-4/`](mate_point_v0-4/); UI Figma LVGL; plan [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) |
+| 2026-06-18 | **Etapa 2b-5 planificada** — UI Figma v0-4; plan [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md); assets [`UI/figma/`](../UI/figma/) |
+| 2026-06-17 | **Etapa 2b-4 E2E OK** — [`mate_point_v0-3-4/`](mate_point_v0-3-4/); VL53L0X + Iniciar; captura [`2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-17-Waveshare-Mate_point-v0-3-4_Test1.md) |
 | 2026-06-05 | **Etapa 2b-3 E2E OK** — fin natural timer + 2.ª compra tras Parar; captura [`2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md`](../tools/nobana_uart_sniffer/capturas/2026-06-05-Waveshare-Mate_point-v0-3-3_Test1.md) |
 | 2026-06-05 | **Etapa 2b-3 OK** — [`mate_point_v0-3-3/`](mate_point_v0-3-3/) Test1 banco; corte ~300–500 ms |
 | 2026-06-05 | **Etapa 2b-3** — [`mate_point_v0-3-3/`](mate_point_v0-3-3/); Parar 200 ms; UI contrato desacoplado; [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) §16 |
