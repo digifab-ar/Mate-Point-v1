@@ -53,10 +53,12 @@ function connectMqtt() {
 }
 
 function publishDispense(payload = {}) {
-  const durationMs = Number(process.env.DISPENSE_DURATION_MS || 30000);
+  const durationMs = Number(process.env.DISPENSE_DURATION_MS || 120000);
+  const pauseTimeoutMs = Number(process.env.PAUSE_TIMEOUT_MS || 20000);
   const message = {
     cmd: 'dispense',
     duration_ms: durationMs,
+    pause_timeout_ms: pauseTimeoutMs,
     ts: Date.now(),
     ...payload,
   };

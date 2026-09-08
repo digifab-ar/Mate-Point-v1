@@ -84,6 +84,22 @@ function validateOrderForDispense(order) {
   return { ok: true, reason: 'ok' };
 }
 
+function getProductDescription() {
+  const desc = (process.env.PRODUCT_DESCRIPTION || 'Recarga de 1 litro').toString().trim();
+  return desc || 'Recarga de 1 litro';
+}
+
+function formatPriceDisplay(amount) {
+  const normalized = normalizeAmount(amount ?? process.env.MP_SALE_AMOUNT ?? '500.00');
+  if (!normalized) {
+    return '$500';
+  }
+  if (normalized.endsWith('.00')) {
+    return `$${Number.parseInt(normalized, 10)}`;
+  }
+  return `$${normalized}`;
+}
+
 function generateExternalReference(deviceId) {
   const now = new Date();
   const y = now.getUTCFullYear();
@@ -102,13 +118,14 @@ async function createStaticQrOrder(params = {}) {
   const amount = normalizeAmount(process.env.MP_SALE_AMOUNT || '500.00');
   const posId = process.env.MP_EXTERNAL_POS_ID || 'MATEPOINT001POS001';
   const expiration = process.env.MP_ORDER_EXPIRATION || 'PT2M';
+  const productDescription = getProductDescription();
   const externalReference = params.externalReference
     || generateExternalReference(params.deviceId);
 
   const body = {
     type: 'qr',
     total_amount: amount,
-    description: 'Agua caliente - 1 porcion',
+    description: productDescription,
     external_reference: externalReference,
     expiration_time: expiration,
     config: {
@@ -122,7 +139,7 @@ async function createStaticQrOrder(params = {}) {
     },
     items: [
       {
-        title: 'Agua caliente',
+        title: productDescription,
         unit_price: amount,
         quantity: 1,
         unit_measure: 'unit',
@@ -185,4 +202,6 @@ module.exports = {
   cancelOrder,
   generateExternalReference,
   normalizeAmount,
+  getProductDescription,
+  formatPriceDisplay,
 };

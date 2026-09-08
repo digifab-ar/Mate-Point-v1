@@ -2,7 +2,7 @@
 
 **Proyecto:** Mate Point — Dispensador de agua caliente  
 **OT:** OT-00268 — Etapa 3  
-**Última actualización:** 2026-06-24
+**Última actualización:** 2026-09-08
 
 ---
 
@@ -31,12 +31,12 @@
 │  └──────────────┘                                            │
 │                      I2C                                     │
 │                  ┌──────────────────────┐                    │
-│                  │ VL53L0X (0x29)       │  ← proximidad      │
+│                  │ VL6180 (0x29)        │  ← proximidad      │
 │                  └──────────────────────┘                    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-El módulo Waveshare **reemplaza** el panel de control original (display + botones) tomando control total del dispensador. La comunicación UART pasa por un **TXS0108E** que adapta los niveles 3.3 V del ESP32 a los 5 V de la PCB Nobana. El **VL53L0X** conectado por I2C detecta la presencia del recipiente bajo el dispensador. El GPIO GP6 monitorea el **sensor de nivel del recipiente de goteo**.
+El módulo Waveshare **reemplaza** el panel de control original (display + botones) tomando control total del dispensador. La comunicación UART pasa por un **TXS0108E** que adapta los niveles 3.3 V del ESP32 a los 5 V de la PCB Nobana. El **VL6180** conectado por I2C detecta la presencia del recipiente bajo el dispensador (reemplaza al VL53L0X a ~1 cm). El GPIO GP6 monitorea el **sensor de nivel del recipiente de goteo**.
 
 ---
 
@@ -104,7 +104,7 @@ Con **GP6 como único GPIO libre**, la asignación de sensores y periféricos qu
 |----------|-----------|------------|-------|
 | **UART2** (PH2.0) | PCB Nobana | — + TXS0108E | Comunicación principal con el dispensador |
 | **GPIO GP6** (PH2.0) | Sensor bandeja de goteo | Flotante + **reed NO** | Digital — **HIGH** = seguro · **LOW** = llena |
-| **I2C** (PH2.0) | Sensor de proximidad | VL53L0X (0x29) | ToF, detecta recipiente bajo el dispensador |
+| **I2C** (PH2.0) | Sensor de proximidad | VL6180 (0x29) | ToF corto alcance, detecta recipiente (~1 cm) |
 | **I2C** (PH2.0) | GT911 táctil | — | Integrado, no liberar |
 | **I2C** (PH2.0) | CH422G IO expander | — | Integrado, no liberar |
 | **RS-485** (PH2.0) | Reserva | — | No asignado |
@@ -121,7 +121,7 @@ Waveshare ESP32-S3-Touch-7B
 │
 ├── I2C PH2.0 ──┬── GT911  (0x14/0x5D)      ← táctil (integrado)
 │               ├── CH422G (0x24)            ← IO expander (integrado)
-│               └── VL53L0X (0x29)           ← sensor de proximidad
+│               └── VL6180 (0x29)            ← sensor de proximidad (termo)
 │
 ├── GPIO PH2.0 ──┬── 3V3 ──[10 kΩ]──┬── GP6 (GPIO_NUM_6)   ← sensor bandeja (§3.4)
 │               │                  └── reed NO ── GND
@@ -131,20 +131,17 @@ Waveshare ESP32-S3-Touch-7B
 └── CAN PH2.0 ────────────────────────────── [reserva]
 ```
 
-└── CAN PH2.0 ────────────────────────────── [reserva]
-```
-
 ### 3.2 Consideraciones I2C
 
-Con el VL53L0X agregado, el bus I2C tiene tres dispositivos:
+Con el VL6180 en el bus I2C hay tres dispositivos:
 
 | Dirección | Dispositivo | Origen |
 |-----------|-------------|--------|
 | 0x14 / 0x5D | GT911 (táctil) | Integrado |
 | 0x24 | CH422G (IO expander) | Integrado |
-| 0x29 | VL53L0X (proximidad) | Externo — sin conflicto |
+| 0x29 | VL6180 (proximidad termo) | Externo — reemplaza VL53L0X; sin conflicto |
 
-No hay colisiones. El cableado externo debe ser corto (<30 cm) y usar las resistencias pull-up ya presentes en el módulo para el táctil.
+No hay colisiones. El VL6180 usa **índice de registro de 16 bits** hacia el esclavo `0x29` (el resto del bus no cambia). SHUT del módulo a **3.3 V**; INT sin conectar (GPIO6 queda para bandeja). Cable corto (<30 cm) y pull-ups del táctil. **No reutilizar el orden SDA/SCL del loom VL53L0X** — en banco 2026-09-08 los hilos invertidos daban `ID no responde`.
 
 ### 3.3 Expansión futura de GPIOs
 
@@ -194,6 +191,7 @@ Firmware v0-5: poll cada **5 s**; `DRIP_TRAY_FULL_LEVEL = LOW`. Ver [`mate_point
 | `arquitectura-mate-point.md` | Máquina de estados del firmware; el estado `DISPENSING` se materializa enviando el comando UART al Nobana (ver §2.3) |
 | `plan-de-implementacion.md` | Plan de fases; incluye el relevamiento UART del Nobana como prerrequisito de Fase 4 |
 | `mate_point_firmware/PLAN-MATE-POINT-v0-5.md` | Firmware sensor bandeja — poll, UI error, auto-Parar |
+| `mate_point_firmware/PLAN-MATE-POINT-v0-7.md` | Firmware VL6180 — reemplazo ToF termo @ 0x29 |
 | `docs/hardware/sensor-bandeja-reed-gpio6.png` | Esquema cableado reed + pull-up 10 kΩ @ GPIO6 |
 
 ---
@@ -202,6 +200,8 @@ Firmware v0-5: poll cada **5 s**; `DRIP_TRAY_FULL_LEVEL = LOW`. Ver [`mate_point
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-09-08 | §3.2 — Banco v0-7: SDA/SCL del VL6180 no copian el loom L0X (hilos invertidos → sin ACK en `0x29`) |
+| 2026-09-08 | §1 / §3 — VL53L0X → **VL6180** @ 0x29 (corto alcance ~1 cm); firmware [`mate_point_v0-7`](mate_point_firmware/mate_point_v0-7/) |
 | 2026-06-24 | §3.4 — Cableado validado reed NO @ GPIO6: pull-up **10 kΩ** a 3V3, reed a GND; **HIGH** = seguro, **LOW** = llena; esquema en `docs/hardware/` |
 | 2026-05-27 | Documento creado — consolidación de arquitectura hardware desde `dispensador-nobana.md` y `modulo-waveshare-esp32s3-touch-7b.md` |
 | 2026-05-27 | §1 — Diagrama de visión general expandido: TXS0108E (level shift UART), VL53L0X (I2C proximidad), sensor de nivel recipiente de goteo (GP6) |

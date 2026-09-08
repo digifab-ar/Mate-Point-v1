@@ -460,6 +460,7 @@ MP_USER_ID=3420512522
 MP_EXTERNAL_POS_ID=MATEPOINT001POS001
 MP_WEBHOOK_SECRET=                   # Clave secreta de la app en el portal MP
 MP_SALE_AMOUNT=500.00                # Precio por porción (ARS); mínimo MP $ 15.00
+PRODUCT_DESCRIPTION=Recarga de 1 litro  # Nombre en QR (v0-9) e item Mercado Pago
 
 # MQTT — prototipo: broker público HiveMQ (sin cuenta)
 MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt
@@ -467,7 +468,8 @@ MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt
 # MQTT_USER=
 # MQTT_PASS=
 MQTT_DEVICE_ID=MATEPOINT001
-DISPENSE_DURATION_MS=30000
+DISPENSE_DURATION_MS=120000          # SKU 1 L (120 s de flujo = 1 L en UI v0-9)
+PAUSE_TIMEOUT_MS=20000               # Sesión abierta tras Parar / retiro de termo
 
 # App
 PORT=3000

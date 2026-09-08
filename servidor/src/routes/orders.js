@@ -1,5 +1,10 @@
 const express = require('express');
-const { createStaticQrOrder, cancelOrder } = require('../services/mercadopago');
+const {
+  createStaticQrOrder,
+  cancelOrder,
+  getProductDescription,
+  formatPriceDisplay,
+} = require('../services/mercadopago');
 
 const router = express.Router();
 
@@ -30,6 +35,8 @@ router.post('/create', async (req, res) => {
       status: order.status,
       external_reference: order.external_reference,
       total_amount: order.total_amount,
+      product_description: getProductDescription(),
+      price_display: formatPriceDisplay(order.total_amount),
       expiration_time: process.env.MP_ORDER_EXPIRATION || 'PT2M',
       device_id: deviceId,
     });

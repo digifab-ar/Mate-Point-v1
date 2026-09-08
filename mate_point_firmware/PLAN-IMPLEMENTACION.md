@@ -3,7 +3,7 @@
 **Proyecto:** Mate Point — OT-00268 Etapa 3  
 **Base hardware producto:** Waveshare ESP32-S3-Touch-LCD-7B  
 **Device ID:** `MATEPOINT001`  
-**Última actualización:** 2026-06-25  
+**Última actualización:** 2026-09-08  
 
 | Hito | Estado |
 |------|--------|
@@ -20,8 +20,10 @@
 | Producto [`mate_point_v0-5-1`](mate_point_v0-5-1/) — error agua UART | **E2E OK** banco 2026-06-24 (V6/V7) · [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md) |
 | Producto [`mate_point_v0-5-2`](mate_point_v0-5-2/) — pausa / reanudar Cargar termo | **Implementado** — UI pausa OK hardware · [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) |
 | Producto [`mate_point_v0-6`](mate_point_v0-6/) — Wi-Fi SoftAP + portal web (NVS) | **E2E OK** hardware 2026-06-25 · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) · [`mate_point_v0-6/README.md`](mate_point_v0-6/README.md) |
+| Producto [`mate_point_v0-7`](mate_point_v0-7/) — VL6180 (reemplazo VL53L0X) | **OK hardware** 2026-09-08 · [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) · [`mate_point_v0-7/README.md`](mate_point_v0-7/README.md) |
+| Producto [`mate_point_v0-9`](mate_point_v0-9/) — oferta servidor + litros + retiro termo | **Implementado** · QA banco pendiente · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) · [`mate_point_v0-9/README.md`](mate_point_v0-9/README.md) |
 
-Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) · [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md) · [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) · [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md) · [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md) · [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) · [`UI-DISCREPANCIAS-v0-4.md`](UI-DISCREPANCIAS-v0-4.md) · [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js) · [`UI/figma/`](../UI/figma/)
+Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) · [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md) · [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) · [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md) · [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md) · [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) · [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) · [`UI-DISCREPANCIAS-v0-4.md`](UI-DISCREPANCIAS-v0-4.md) · [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js) · [`UI/figma/`](../UI/figma/)
 
 ---
 
@@ -103,6 +105,7 @@ Detalle de archivos y conversor LVGL: **§15**.
 {
   "cmd": "dispense",
   "duration_ms": 120000,
+  "pause_timeout_ms": 20000,
   "order_id": "ORDTST01...",
   "external_reference": "mate-001-20260527-003",
   "ts": 1748369220000
@@ -113,6 +116,7 @@ Detalle de archivos y conversor LVGL: **§15**.
 |-------|------------------|
 | `cmd` | Procesar solo si `"dispense"` |
 | `duration_ms` | Timer de pantalla "Dispensar" |
+| `pause_timeout_ms` | **v0-9:** deadline de sesión abierta tras Parar / retiro de termo. Si falta o es 0 → `PAUSE_DECISION_TIMEOUT_MS` (20 s). Firmware anterior ignora el campo |
 | `order_id` | Dedup + log Serial |
 | `external_reference` | Log Serial opcional |
 | `ts` | Log opcional |
@@ -684,12 +688,43 @@ Assets UI: [`../UI/figma/`](../UI/figma/) · Wireframe: [Figma Mate Point](https
 | Herencia | Pausa/reanudar, bandeja, agua UART, VL53L0X, E2E compra |
 | Doc | [`mate_point_v0-6/README.md`](mate_point_v0-6/README.md) · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) |
 
+### 17.3 Producto v0-7 — VL6180
+
+| Tema | v0-7 — **OK hardware** 2026-09-08 |
+|------|-------------------------------------|
+| Base | Fork v0-6 |
+| Sensor termo | **VL6180** @ I2C `0x29` (regs 16 bit, ID `0xB4`); sale el VL53L0X |
+| Offset | `TERMO_OFFSET_MM = 0` — **no** copiar 85 mm |
+| Umbral | `TERMO_PRESENT_MAX_MM = 15`; poll 300 ms; debounce 2 |
+| Debug UI | `UI_DEBUG_TERMO=0` (producto); `=1` solo banco |
+| MQTT | `MQTT_CLIENT_ID` sufijo **v070** |
+| Herencia | Pausa, bandeja, agua UART, UI Figma, Wi-Fi NVS |
+| Banco | Init + gate termo OK. `ID no responde` = **SDA/SCL invertidos** vs loom L0X |
+| Doc | [`mate_point_v0-7/README.md`](mate_point_v0-7/README.md) · [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) |
+
+### 17.4 Producto v0-9 — oferta / litros / retiro termo
+
+| Tema | v0-9 — **Implementado** (QA banco pendiente) |
+|------|-----------------------------------------------|
+| Base | Fork v0-7 (v0-8 flota queda para el final) |
+| Temp UI | Piso 80 °C en Cargar termo (`DISPENSING` / `PAUSED`); Serial crudo |
+| Litros | `ms / 120000`; tope = `duration_ms / 120000` |
+| Oferta QR | `product_description` + `price_display` en `POST /orders/create` |
+| Retiro termo | Pausa UART + `WAIT_TERMO_RESUME` + Continuar manual |
+| Timer X | MQTT `pause_timeout_ms`; fallback 20 s |
+| MQTT | `MQTT_CLIENT_ID` sufijo **v090** |
+| Servidor | `PRODUCT_DESCRIPTION`, `PAUSE_TIMEOUT_MS`; Railway `DISPENSE_DURATION_MS=120000` |
+| Doc | [`mate_point_v0-9/README.md`](mate_point_v0-9/README.md) · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) |
+
 ---
 
 ## Changelog
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-09-08 | **v0-9 implementado** — fork v0-7; oferta create; litros ms/120000; piso 80 °C UI; `WAIT_TERMO_RESUME`; [`mate_point_v0-9/`](mate_point_v0-9/) · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) |
+| 2026-09-08 | **v0-7 OK hardware** — VL6180 @ 0x29; SDA/SCL invertidos era el blocker de init; debug UI off; [`mate_point_v0-7/`](mate_point_v0-7/) |
+| 2026-09-08 | **v0-7 implementado** — driver VL6180 `i2c_master`; [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) |
 | 2026-06-25 | **v0-6 E2E OK hardware** — Wi-Fi NVS + SoftAP + portal; doc [`mate_point_v0-6/README.md`](mate_point_v0-6/README.md) · [`arquitectura-mate-point.md`](../arquitectura-mate-point.md) §3 |
 | 2026-06-24 | **v0-5-2 UI pausa** — Continuar oculto en cooldown; solo Finalizar; visible tras ~7 s |
 | 2026-06-24 | **v0-5-2 fix pausa** — `abort_pause` cooldown 5 s; `standby_enable` al reanudar |

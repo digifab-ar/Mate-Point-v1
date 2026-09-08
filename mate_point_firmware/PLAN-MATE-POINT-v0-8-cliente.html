@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mate Point — Flota de máquinas y Mercado Pago</title>
+  <style>
+    :root {
+      --ink: #161e18;
+      --muted: #5a645c;
+      --line: #d9d2c4;
+      --paper: #fbf8f2;
+      --card: #ffffff;
+      --green: #2f5c32;
+      --green-deep: #1c3820;
+      --gold: #b08a3e;
+      --gold-soft: #f3e6c8;
+      --ok: #2f5c32;
+      --warn-bg: #f8efe0;
+      --client: #1e4d7a;
+      --client-bg: #eaf2f8;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.55 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 28px 22px 80px;
+    }
+
+    header.hero {
+      background: var(--green-deep);
+      color: #f6f1e6;
+      border-radius: 18px;
+      padding: 36px 32px 28px;
+      margin-bottom: 28px;
+    }
+
+    header.hero .kicker {
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: #d7c089;
+      margin: 0 0 10px;
+    }
+
+    header.hero h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      line-height: 1.15;
+      font-weight: 650;
+    }
+
+    header.hero p.lead {
+      margin: 0 0 22px;
+      max-width: 62ch;
+      color: #e7e1d4;
+      font-size: 17px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.18);
+      font-size: 13px;
+    }
+
+    .meta span { display: block; color: #b9c4b6; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+    .meta strong { color: #fff; font-weight: 600; }
+
+    nav.toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin-bottom: 32px;
+    }
+
+    nav.toc h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    nav.toc ol { margin: 0; padding-left: 20px; columns: 2; gap: 24px; }
+    nav.toc a { color: var(--green); text-decoration: none; }
+    nav.toc a:hover { text-decoration: underline; }
+    nav.toc li { margin: 4px 0; break-inside: avoid; }
+
+    h2 {
+      margin: 42px 0 12px;
+      padding-top: 8px;
+      font-size: 24px;
+      color: var(--green-deep);
+    }
+
+    h3 { margin: 28px 0 10px; font-size: 18px; color: var(--ink); }
+    h4 { margin: 18px 0 8px; font-size: 15px; }
+
+    p { margin: 0 0 12px; }
+    a { color: var(--green); }
+    ul, ol { margin: 0 0 14px; padding-left: 22px; }
+    li { margin: 4px 0; }
+
+    .callout {
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin: 16px 0;
+      border: 1px solid var(--line);
+    }
+    .callout.gold { background: var(--gold-soft); border-color: #e2cf9a; }
+    .callout.client { background: var(--client-bg); border-color: #c5d7e8; }
+    .callout.ok { background: #e7f0e4; border-color: #c5d8c0; }
+    .callout strong.label { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+    .callout.gold strong.label { color: #7a5a1c; }
+    .callout.client strong.label { color: var(--client); }
+    .callout.ok strong.label { color: var(--green); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      margin: 12px 0 20px;
+      font-size: 14.5px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 11px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #eef3ea; color: var(--green-deep); font-weight: 650; }
+    td code, p code, li code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+      background: #efeae0;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .tree {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin: 16px 0 20px;
+      font-size: 14.5px;
+    }
+
+    .tree .node {
+      border-left: 2px solid #c9d6c4;
+      margin-left: 10px;
+      padding: 6px 0 6px 16px;
+    }
+
+    .tree .root {
+      border-left: none;
+      margin-left: 0;
+      padding-left: 0;
+      font-weight: 650;
+      color: var(--green-deep);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      background: var(--gold-soft);
+      color: #6b4e16;
+      border-radius: 999px;
+      padding: 2px 8px;
+      margin-left: 6px;
+    }
+
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps > li {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px 14px 56px;
+      margin: 10px 0;
+    }
+    .steps > li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--green);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 14px 0 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px;
+    }
+
+    .card h3 { margin-top: 0; }
+    .card.client-card { border-top: 4px solid var(--client); }
+    .card.digi-card { border-top: 4px solid var(--green); }
+
+    pre {
+      background: #172117;
+      color: #e8efe4;
+      border-radius: 10px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .print-hint { display: none; }
+
+    @media (max-width: 720px) {
+      nav.toc ol { columns: 1; }
+      .two { grid-template-columns: 1fr; }
+      header.hero { padding: 24px 18px; }
+      header.hero h1 { font-size: 26px; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { max-width: none; padding: 0; }
+      header.hero { border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      nav.toc, .print-hint { display: none; }
+      a { color: inherit; text-decoration: none; }
+      table, .card, .callout, .tree, .steps > li { break-inside: avoid; }
+      h2 { break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <p class="kicker">DigiFAB · OT-00268 · Etapa 3</p>
+      <h1>Mate Point: varias máquinas, una cuenta de Mercado Pago</h1>
+      <p class="lead">Documento para el cliente. Explica cómo se cobra con QR en cada dispensador, qué hay que configurar en Mercado Pago y qué datos necesita DigiFAB para dejar la flota en marcha.</p>
+      <div class="meta">
+        <div><span>Proyecto</span><strong>Mate Point</strong></div>
+        <div><span>Versión</span><strong>v0-8 — flota</strong></div>
+        <div><span>Fecha</span><strong>2 de septiembre de 2026</strong></div>
+        <div><span>Estado</span><strong>Plan acordado</strong></div>
+      </div>
+    </header>
+
+    <nav class="toc" aria-label="Contenido">
+      <h2>Contenido</h2>
+      <ol>
+        <li><a href="#objetivo">Objetivo</a></li>
+        <li><a href="#modelo">Cómo queda el modelo</a></li>
+        <li><a href="#decisiones">Decisiones acordadas</a></li>
+        <li><a href="#roles">Quién hace qué</a></li>
+        <li><a href="#guia">Guía: cuenta Mercado Pago</a></li>
+        <li><a href="#datos">Datos que necesitamos</a></li>
+        <li><a href="#plantilla">Plantilla de entrega</a></li>
+        <li><a href="#digifab">Qué implementa DigiFAB</a></li>
+        <li><a href="#aceptacion">Cómo sabemos que está listo</a></li>
+        <li><a href="#fuera">Fuera de este alcance</a></li>
+        <li><a href="#tiempos">Tiempos estimados</a></li>
+      </ol>
+    </nav>
+
+    <section id="objetivo">
+      <h2>1. Objetivo</h2>
+      <p>Habilitar <strong>varios Mate Point</strong> cobrando en <strong>la misma cuenta de Mercado Pago de ustedes</strong>, con esta regla:</p>
+      <ol>
+        <li><strong>Una sucursal</strong> para toda la marca / flota.</li>
+        <li><strong>Una caja y un QR estático por máquina.</strong></li>
+        <li><strong>Un identificador único</strong> por máquina (<code>device_id</code>).</li>
+        <li>La <strong>aplicación de Developers y las credenciales quedan en su cuenta</strong>, no en la de DigiFAB.</li>
+      </ol>
+      <p>Hoy el prototipo funciona 1 a 1: una máquina, una sucursal, una caja. El siguiente paso es que el pago de la máquina 2 no active la máquina 1, y que cada pantalla muestre el QR de su propia caja.</p>
+      <div class="callout gold">
+        <strong class="label">Alcance de este hito</strong>
+        Registro de cada máquina con su caja de Mercado Pago, cobro enruteado a esa máquina, QR grabado por unidad, y guía para crear la app en su cuenta. No incluye QR dinámico, ni configurar el identificador de máquina por Wi-Fi, ni una sucursal distinta por local.
+      </div>
+    </section>
+
+    <section id="modelo">
+      <h2>2. Cómo queda el modelo</h2>
+      <div class="tree">
+        <div class="node root">Cuenta Mercado Pago de ustedes (quien cobra)</div>
+        <div class="node">
+          App Developers <strong>Mate point</strong>
+          <span class="badge">1 sola</span>
+          <div class="node">
+            Sucursal <code>MATEPOINT</code>
+            <span class="badge">1 para toda la flota</span>
+            <div class="node">Caja <code>MATEPOINT001POS001</code> ↔ máquina <code>MATEPOINT001</code> ↔ QR 1</div>
+            <div class="node">Caja <code>MATEPOINT002POS001</code> ↔ máquina <code>MATEPOINT002</code> ↔ QR 2</div>
+            <div class="node">Caja <code>MATEPOINT00nPOS001</code> ↔ máquina <code>MATEPOINT00n</code> ↔ QR n</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <strong class="label">Importante</strong>
+        No se reutiliza un QR entre dos máquinas. Mercado Pago mantiene <strong>una orden abierta por caja</strong>. Dos equipos con la misma caja se pisan: un pago puede activar la máquina equivocada.
+      </div>
+    </section>
+
+    <section id="decisiones">
+      <h2>3. Decisiones acordadas</h2>
+      <table>
+        <thead>
+          <tr><th>Tema</th><th>Decisión</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Sucursales</td><td><strong>Una sucursal para todos</strong> los Mate Point.</td></tr>
+          <tr><td>Cajas / QR</td><td><strong>Una caja + un QR por máquina.</strong> No se comparte caja entre equipos.</td></tr>
+          <tr><td>Titular</td><td>Cuenta <strong>de ustedes</strong> (quien cobra). La app se crea en esa cuenta.</td></tr>
+          <tr><td>Rol DigiFAB</td><td>Implementa servidor y firmware. Recibe credenciales por <strong>compartir en el portal</strong> de Mercado Pago, no por chat.</td></tr>
+          <tr><td>Nombre de sucursal</td><td><code>MATEPOINT</code> — identidad de marca, no es el nombre de una máquina.</td></tr>
+          <tr><td>Nombre de cada máquina</td><td><code>MATEPOINT001</code>, <code>MATEPOINT002</code>, …</td></tr>
+          <tr><td>Nombre de cada caja</td><td><code>MATEPOINT001POS001</code>, <code>MATEPOINT002POS001</code>, … (sin guiones).</td></tr>
+          <tr><td>En el local</td><td>El dueño del local solo configura el Wi-Fi. No crea cajas ni entra a Developers.</td></tr>
+          <tr><td>Domicilio de la sucursal</td><td>Dirección <strong>fiscal / sede</strong> (CUIT). No es la dirección de cada kiosco. Mercado Pago la usa para impuestos y mapa.</td></tr>
+          <tr><td>Monto del QR</td><td>Monto fijo, igual en toda la flota en este hito.</td></tr>
+          <tr><td>Precio y duración</td><td>Iguales para todas las máquinas en este hito.</td></tr>
+          <tr><td>Cuenta de prueba DigiFAB</td><td>No se migra. En su cuenta se crea sucursal y cajas <strong>nuevas</strong>.</td></tr>
+          <tr><td>Producción</td><td>Primero se valida en modo prueba. Producción es el mismo procedimiento con las credenciales productivas, más adelante.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Qué cambia respecto al prototipo actual</h3>
+      <table>
+        <thead>
+          <tr><th>Aspecto</th><th>Hoy (prototipo)</th><th>Con este hito</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Cuenta Mercado Pago</td><td>Sandbox DigiFAB</td><td>Cuenta de ustedes</td></tr>
+          <tr><td>Sucursales</td><td>1, igualada a la máquina</td><td>1 (<code>MATEPOINT</code>) para N máquinas</td></tr>
+          <tr><td>Cajas</td><td>1</td><td>N — una por máquina</td></tr>
+          <tr><td>Pago en máquina 2</td><td>Llegaría a la máquina 1</td><td>Llega solo a la máquina 2</td></tr>
+          <tr><td>QR en pantalla</td><td>Uno solo</td><td>El PNG de esa caja, grabado en esa unidad</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="roles">
+      <h2>4. Quién hace qué</h2>
+      <div class="two">
+        <div class="card client-card">
+          <h3>Ustedes</h3>
+          <ul>
+            <li>Cuenta Mercado Pago vendedora (empresa / CUIT del negocio).</li>
+            <li>Crear la aplicación Developers «Mate point».</li>
+            <li>Completar verificación de identidad.</li>
+            <li><strong>Compartir credenciales</strong> con DigiFAB desde el portal.</li>
+            <li>Guardar Access Token y clave de webhook en un lugar seguro. No pegarlos en mails, tickets ni WhatsApp.</li>
+            <li>Más adelante: activar credenciales de producción.</li>
+          </ul>
+        </div>
+        <div class="card digi-card">
+          <h3>DigiFAB</h3>
+          <ul>
+            <li>Con las credenciales compartidas: verificar la cuenta, crear la sucursal <code>MATEPOINT</code> y una caja por máquina.</li>
+            <li>Descargar el QR de cada caja y grabarlo en esa unidad.</li>
+            <li>Configurar el servidor para que cada pago active la máquina correcta.</li>
+            <li>El dueño del local solo carga el Wi-Fi en la pantalla, igual que ahora.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="guia">
+      <h2>5. Guía: cuenta Mercado Pago Developers</h2>
+      <p>Mercado Pago <strong>no</strong> tiene una «cuenta developer» aparte. Se entra a <a href="https://www.mercadopago.com.ar/developers">developers.mercadopago.com.ar</a> con la <strong>misma</strong> cuenta que cobra. Quien es dueño de esa cuenta es dueño de la app, de las cajas y del dinero.</p>
+      <div class="callout client">
+        <strong class="label">Usar la cuenta correcta</strong>
+        Cuenta <strong>empresa / CUIT del negocio</strong>. No la de un técnico personal ni la de DigiFAB.
+      </div>
+
+      <h3>5.1 Si todavía no hay cuenta Mercado Pago</h3>
+      <ol class="steps">
+        <li>Crear cuenta en <a href="https://www.mercadopago.com.ar">mercadopago.com.ar</a> con el mail corporativo que va a quedar como titular.</li>
+        <li>Completar datos personales o de empresa (CUIT, domicilio fiscal).</li>
+        <li>Instalar la <strong>app Mercado Pago</strong> en un celular del titular.</li>
+        <li>Completar <strong>verificación de identidad</strong> (Mercado Pago la pide al crear la aplicación).</li>
+        <li>Confirmar que se ve el saldo / actividad de esa cuenta: es la que recibirá los cobros QR.</li>
+      </ol>
+
+      <h3>5.2 Crear la aplicación (Código QR)</h3>
+      <p>Documentación: <a href="https://www.mercadopago.com.ar/developers/es/docs/qr-code/create-application">Crear aplicación QR</a>.</p>
+      <ol class="steps">
+        <li>Abrir <a href="https://www.mercadopago.com.ar/developers">Mercado Pago Developers</a> e ingresar con la cuenta del paso anterior.</li>
+        <li>Arriba a la derecha: <strong>Tus integraciones</strong> → <strong>Crear aplicación</strong> (o <strong>Ver todas</strong> si ya hay otras).</li>
+        <li>Completar verificación de identidad o reautenticación si el portal lo pide.</li>
+        <li><strong>Nombre:</strong> <code>Mate point</code> (máximo 50 caracteres).</li>
+        <li>Tipo de pago: <strong>Pagos presenciales</strong> → Continuar.</li>
+        <li>Producto: <strong>Código QR</strong> → Continuar.</li>
+        <li>Confirmar, aceptar Declaración de Privacidad y Términos → <strong>Confirmar</strong>.</li>
+      </ol>
+      <p>Queda creada la app. Las <strong>credenciales de prueba</strong> se generan solas; no hay que «activarlas».</p>
+
+      <h3>5.3 Anotar credenciales de prueba</h3>
+      <p>En la app → menú izquierdo <strong>Pruebas → Credenciales de prueba</strong>:</p>
+      <table>
+        <thead>
+          <tr><th>Dato</th><th>¿Lo usa Mate Point?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Access Token</strong> (empieza con <code>APP_USR-</code>)</td><td><strong>Sí</strong> — backend. Nunca va en la máquina ni en un repositorio.</td></tr>
+          <tr><td><strong>Public Key</strong></td><td>No en este hito (no hay checkout web de Mercado Pago).</td></tr>
+          <tr><td><strong>User ID</strong> (vendedor de prueba)</td><td><strong>Sí</strong> — para crear la sucursal.</td></tr>
+          <tr><td><strong>N.° de aplicación</strong></td><td>Trazabilidad y soporte. No va en el dispensador.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.4 Compartir credenciales con DigiFAB (recomendado)</h3>
+      <p>Documentación: <a href="https://www.mercadopago.com.ar/developers/es/docs/credentials">Credenciales — compartir</a>.</p>
+      <p>Así <strong>no mandan el token por WhatsApp</strong> y pueden revocar el acceso después.</p>
+      <ol class="steps">
+        <li>Tus integraciones → aplicación <strong>Mate point</strong>.</li>
+        <li><strong>Pruebas</strong> (o <strong>Producción</strong> cuando corresponda).</li>
+        <li><strong>Comparte las credenciales con un desarrollador</strong> → <strong>Compartir credenciales</strong>.</li>
+        <li>Mail de la cuenta Mercado Pago de DigiFAB (tiene que ser una cuenta Mercado Pago).</li>
+        <li>Máximo 10 compartidos; se pueden quitar sin romper la app.</li>
+      </ol>
+      <p>Si no pueden usar «compartir»: carga conjunta en el panel del servidor, en una llamada, sin dejar el token en tickets.</p>
+
+      <h3>5.5 Webhook (cuando DigiFAB indique la URL)</h3>
+      <ol class="steps">
+        <li>Tus integraciones → app <strong>Mate point</strong> → <strong>Webhooks</strong>.</li>
+        <li>URL (entorno actual): <code>https://mate-point-v1-production.up.railway.app/webhook/mp</code></li>
+        <li>Modo <strong>Prueba</strong> primero. Evento: órdenes / <strong>Order (Mercado Pago)</strong>.</li>
+        <li>Guardar. Copiar la <strong>clave secreta</strong> para el servidor (no enviarla por chat).</li>
+        <li>Mercado Pago suele mandar un POST de prueba; el servidor debe responder 200.</li>
+      </ol>
+      <p>La clave de modo prueba <strong>no es</strong> la de modo productivo. Al pasar a producción hay que actualizarla.</p>
+
+      <h3>5.6 Credenciales de producción (más adelante)</h3>
+      <p>No hace falta el día 1. Cuando el flujo de prueba esté cerrado:</p>
+      <ol>
+        <li>App → <strong>Producción → Credenciales de producción</strong>.</li>
+        <li>Completar <strong>Industria</strong> y <strong>Sitio web</strong> (obligatorio).</li>
+        <li>Aceptar términos → <strong>Activar credenciales de producción</strong>.</li>
+        <li>Reemplazar en el servidor Access Token y User ID reales.</li>
+        <li>Registrar el webhook en la pestaña de producción (otra clave secreta).</li>
+        <li>Crear sucursal y cajas de producción con el token productivo (no reutilizar las de prueba).</li>
+      </ol>
+
+      <h3>5.7 Usuarios de prueba (pagos sandbox)</h3>
+      <ul>
+        <li><strong>Vendedor:</strong> la propia app (token de prueba).</li>
+        <li><strong>Comprador:</strong> otra cuenta de test. La app del celular del tester se loguea con el <strong>comprador</strong>, no con el vendedor.</li>
+      </ul>
+    </section>
+
+    <section id="datos">
+      <h2>6. Datos que DigiFAB necesita</h2>
+      <p>Los entregan ustedes o los leemos con las credenciales compartidas. <strong>Los secretos no se versionan ni se pegan en este documento.</strong></p>
+
+      <h3>6.1 Servidor</h3>
+      <table>
+        <thead>
+          <tr><th>Dato</th><th>Uso</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Access Token</td><td>Crear, consultar y cancelar órdenes QR.</td></tr>
+          <tr><td>User ID</td><td>Alta de sucursal y chequeos.</td></tr>
+          <tr><td>Clave secreta del webhook</td><td>Validar notificaciones de Mercado Pago.</td></tr>
+          <tr><td>N.° de aplicación</td><td>Documentación y soporte.</td></tr>
+          <tr><td>URL de webhook confirmada</td><td>Debe coincidir con la del portal.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.2 Sucursal única</h3>
+      <table>
+        <thead>
+          <tr><th>Dato</th><th>Ejemplo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Nombre</td><td>Mate point</td></tr>
+          <tr><td>Identificador</td><td><code>MATEPOINT</code></td></tr>
+          <tr><td>ID numérico que asigna Mercado Pago</td><td>Se anota al crearla</td></tr>
+          <tr><td>Domicilio fiscal</td><td>Calle, ciudad (nombre exacto de la lista de Mercado Pago), provincia, lat/long, CP</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.3 Por cada máquina</h3>
+      <table>
+        <thead>
+          <tr><th>Dato</th><th>Máquina 1</th><th>Máquina 2</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Identificador de máquina</td><td><code>MATEPOINT001</code></td><td><code>MATEPOINT002</code></td></tr>
+          <tr><td>Nombre de caja</td><td>Mate point - Dispensador 1</td><td>Mate point - Dispensador 2</td></tr>
+          <tr><td>Identificador de caja</td><td><code>MATEPOINT001POS001</code></td><td><code>MATEPOINT002POS001</code></td></tr>
+          <tr><td>ID y QR de Mercado Pago</td><td colspan="2">Los genera Mercado Pago al crear la caja. DigiFAB descarga el PNG y lo graba en esa unidad.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.4 Lo define DigiFAB (no se pide al cliente)</h3>
+      <ul>
+        <li>Monto de venta (hoy <code>$ 500,00</code> en el prototipo; se cambia si ustedes fijan otro precio, mínimo $ 15).</li>
+        <li>Vencimiento de la orden: 2 minutos, alineado al timer de la pantalla.</li>
+        <li>Tiempo de dispensado.</li>
+        <li>Dirección del servidor.</li>
+      </ul>
+
+      <h3>6.5 No hacen falta en este hito</h3>
+      <ul>
+        <li>Public Key</li>
+        <li>Client ID / Client Secret (no hay OAuth)</li>
+        <li>Access Token en el dispensador: el ESP32 <strong>nunca</strong> habla con Mercado Pago</li>
+      </ul>
+    </section>
+
+    <section id="plantilla">
+      <h2>7. Plantilla de entrega</h2>
+      <p>Completar y guardar fuera del correo / repositorio. Los tokens van en el servidor o en un gestor de secretos, no en este recuadro.</p>
+      <pre>Cliente: ____________________
+Fecha: ____________________
+
+App: Mate point
+N.° aplicación: ____________________
+User ID prueba: ____________________
+User ID producción (si aplica): ____________________
+Webhook URL: https://mate-point-v1-production.up.railway.app/webhook/mp
+Webhook modo: prueba / producción
+Access Token: (servidor / gestor de secretos — no acá)
+Webhook secret: (servidor / gestor de secretos — no acá)
+
+Sucursal
+  name: Mate point
+  external_id: MATEPOINT
+  store_id: ____________________
+  domicilio: ____________________
+  city_name (lista Mercado Pago): ____________________
+
+Máquinas
+  device_id         | external_pos_id        | pos_id | uuid | URL PNG
+  MATEPOINT001      | MATEPOINT001POS001     |        |      |
+  MATEPOINT002      | MATEPOINT002POS001     |        |      |</pre>
+    </section>
+
+    <section id="digifab">
+      <h2>8. Qué implementa DigiFAB</h2>
+      <p>Con las credenciales compartidas, DigiFAB:</p>
+      <ol>
+        <li>Verifica el token y el User ID.</li>
+        <li>Crea <strong>una</strong> sucursal <code>MATEPOINT</code> con el domicilio fiscal que ustedes indiquen (una sola vez).</li>
+        <li>Crea <strong>una caja por máquina</strong>, descarga el PNG del QR y lo asocia a esa unidad.</li>
+        <li>Configura el servidor para que, al pagar el QR de la máquina 2, solo esa máquina dispense.</li>
+        <li>Graba en cada dispensador su identificador y su QR. El QR no cambia entre ventas.</li>
+      </ol>
+      <div class="callout ok">
+        <strong class="label">Alta de una máquina extra</strong>
+        Se asigna el siguiente identificador, se crea una caja nueva en la misma sucursal, se descarga el QR y se graba esa unidad. No hace falta tocar el webhook ni el Access Token.
+      </div>
+      <p>Documentación oficial de Mercado Pago:</p>
+      <ul>
+        <li><a href="https://www.mercadopago.com.ar/developers/es/docs/qr-code/create-application">Crear aplicación QR</a></li>
+        <li><a href="https://www.mercadopago.com.ar/developers/es/docs/qr-code/create-store-and-pos">Crear sucursal y caja</a></li>
+        <li><a href="https://www.mercadopago.com.ar/developers/es/docs/credentials">Credenciales</a></li>
+        <li><a href="https://www.mercadopago.com.ar/developers/es/docs/qr-code/notifications">Notificaciones / webhooks</a></li>
+        <li><a href="https://www.mercadopago.com.ar/developers/panel/app">Panel: Tus integraciones</a></li>
+      </ul>
+    </section>
+
+    <section id="aceptacion">
+      <h2>9. Cómo sabemos que está listo</h2>
+      <table>
+        <thead>
+          <tr><th></th><th>Criterio</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Una sola sucursal <code>MATEPOINT</code> en la cuenta de ustedes.</td></tr>
+          <tr><td>2</td><td>Al menos dos cajas activas, cada una con su QR.</td></tr>
+          <tr><td>3</td><td>La app y los tokens son de ustedes (compartidos, no copiados del sandbox DigiFAB).</td></tr>
+          <tr><td>4</td><td>El servidor usa esas credenciales.</td></tr>
+          <tr><td>5</td><td>Un pago en el QR de la máquina 2 activa solo la máquina 2.</td></tr>
+          <tr><td>6</td><td>Un pago en la máquina 1 no cambia el estado de la máquina 2.</td></tr>
+          <tr><td>7</td><td>Cada pantalla muestra el QR de su caja.</td></tr>
+          <tr><td>8</td><td>El timeout de 2 minutos y la cancelación siguen igual.</td></tr>
+          <tr><td>9</td><td>El dueño del local sigue configurando solo el Wi-Fi.</td></tr>
+          <tr><td>10</td><td>El dispensado no cambia de comportamiento.</td></tr>
+          <tr><td>11</td><td>Los secretos no están en el repositorio ni en este documento.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="fuera">
+      <h2>10. Fuera de este alcance</h2>
+      <ul>
+        <li>Una sucursal distinta por domicilio de kiosco.</li>
+        <li>Precio o tiempo de dispensado distintos por máquina.</li>
+        <li>Configurar identificador o QR desde el portal Wi-Fi.</li>
+        <li>QR dinámico (que cambie en cada venta).</li>
+        <li>OAuth / marketplace de terceros.</li>
+        <li>Panel de administración de flota.</li>
+        <li>Migrar la sucursal/caja de prueba de DigiFAB.</li>
+      </ul>
+    </section>
+
+    <section id="tiempos">
+      <h2>11. Tiempos estimados</h2>
+      <table>
+        <thead>
+          <tr><th>Fase</th><th>Días</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Onboarding de cuenta + sucursal + 2 cajas + webhook</td><td>0,5–1,0</td></tr>
+          <tr><td>Servidor: ruteo por máquina</td><td>1,0–1,5</td></tr>
+          <tr><td>Firmware de la segunda unidad + QR</td><td>0,5</td></tr>
+          <tr><td>Prueba de punta a punta con dos máquinas</td><td>1,0</td></tr>
+          <tr><td>Cierre de plantilla y documentación</td><td>0,5</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>~3,5–4,5 días</strong></td></tr>
+        </tbody>
+      </table>
+      <div class="callout gold">
+        <strong class="label">Primer paso de ustedes</strong>
+        Crear la aplicación «Mate point» en Developers (sección 5) y compartir las credenciales de prueba con DigiFAB. Con eso se puede crear la sucursal y las cajas.
+      </div>
+    </section>
+
+    <footer>
+      <p>DigiFAB · Mate Point · OT-00268 Etapa 3 · documento para cliente a partir del plan v0-8.</p>
+      <p>No incluye tokens, claves de webhook ni credenciales. Imprimir o «Guardar como PDF» desde el navegador si hace falta enviarlo adjunto.</p>
+    </footer>
+  </div>
+</body>
+</html>
