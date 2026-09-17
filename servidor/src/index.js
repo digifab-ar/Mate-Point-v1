@@ -7,8 +7,10 @@ const healthRouter = require('./routes/health');
 const ordersRouter = require('./routes/orders');
 const webhookRouter = require('./routes/webhook');
 const { connectMqtt, getMqttStatus } = require('./services/mqtt');
+const { loadRegistry } = require('./services/devices');
 
 const PORT = process.env.PORT || 3000;
+const fleet = loadRegistry();
 
 const app = express();
 app.use(morgan('combined'));
@@ -34,5 +36,7 @@ app.listen(PORT, () => {
     port: PORT,
     mqtt: getMqttStatus(),
     broker: process.env.MQTT_BROKER_URL ? '(configured)' : '(missing MQTT_BROKER_URL)',
+    store_external_id: fleet.storeExternalId,
+    devices: fleet.devices.map((d) => d.deviceId),
   }));
 });

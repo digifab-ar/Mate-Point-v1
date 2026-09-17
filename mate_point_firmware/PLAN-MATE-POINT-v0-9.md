@@ -5,12 +5,12 @@
 **Servidor:** Railway `servidor/` — oferta + `pause_timeout_ms` (mismo deploy)  
 **Base validada:** v0-7 (VL6180 — OK hardware 2026-09-08) · pausa v0-5-2 · Wi-Fi NVS v0-6  
 **Plataforma:** Waveshare ESP32-S3-Touch-LCD-7B + Nobana UART + ToF termo + MQTT  
-**Última actualización:** 2026-09-08  
-**Estado:** **Implementado** — QA banco pendiente (A1–A16, P-B1, P-B2)
+**Última actualización:** 2026-09-17  
+**Estado:** **Cerrado — E2E OK hardware** (2026-09-17)
 
 | Documento | Uso |
 |-----------|-----|
-| [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) | Producto actual |
+| [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) | Wi-Fi NVS, portal (herencia) |
 | [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) | Pausa / Continuar / Finalizar / timer 20 s — **D14 se revierte** |
 | [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) | Precio/descripción QR — extensión backend §6.4 (nunca hecha) |
 | [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) | VL6180 — **cerrado** 2026-09-08; ToF de la base |
@@ -39,7 +39,7 @@ Cuatro ajustes de producto sobre v0-6, para que la oferta y la sesión de carga 
 | D1 | Base firmware | Fork **v0-7** (VL6180). v0-8 (flota) se deja para el final |
 | D2 | `MQTT_CLIENT_ID` | Sufijo **`v090`** |
 | D3 | Clamp temperatura | **Solo UI.** No altera UART, setpoint Nobana ni `status` MQTT |
-| D4 | Cuándo aplicar el piso 80 °C | Pantallas **Cargar termo** con telemetría válida: `DISPENSING` y `PAUSED`. **No** en `READY_START` (Iniciar, aún no sale agua). **No** en Coloca termo (esa UI no muestra temp) |
+| D4 | Cuándo aplicar el piso 80 °C | **Cargar termo** en `READY_START`, `DISPENSING` y `PAUSED`. En **Iniciar** (`READY_START`) es **preset 80 °C** (no se muestra `T_viva`). En carga/pausa: si `T_viva < 80` → 80; si no, valor real. **No** en Coloca termo (esa UI no muestra temp) |
 | D5 | Lectura inválida | Seguir mostrando `—°C` |
 | D6 | Umbral | **80** constante en firmware (`UI_TEMP_DISPLAY_MIN_C`). No viene del servidor en v0-9 |
 | D7 | Litros UI | `litros = dispensed_ms / 120000`; tope de sesión = `duration_ms / 120000` (no cap fijo 1,0 L) |
@@ -66,20 +66,20 @@ Cuatro ajustes de producto sobre v0-6, para que la oferta y la sesión de carga 
 | D28 | Bandeja / tanque | Hereda v0-5-1: abort + `order_cancel` + error UI; aplica también en `WAIT_TERMO_RESUME` |
 | D29 | v0-7 / v0-8 | No dependen de v0-9. ToF y flota se implementan en sus hitos |
 
-### 2.1 Pendiente de banco (no cerrar en código hasta probar)
+### 2.1 Banco (cerrado 2026-09-17)
 
-| ID | Tema | Qué hacer en v0-9.0 | Qué ajustar después si hace falta |
-|----|------|---------------------|-----------------------------------|
-| **P-B1** | X muy corto vs cooldown UART (~7 s: cierre ~2 s + `PAUSE_COOLDOWN_MS` 5 s) | Valor inicial servidor **20000** (igual que hoy). Documentar en QA: Continuar no está disponible hasta `!busy && standby` | Subir `PAUSE_TIMEOUT_MS` o el piso mínimo si X &lt; cooldown deja inalcanzable Continuar |
-| **P-B2** | Vapor / ToF falso “sin termo” | Debounce actual (`TERMO_DEBOUNCE_COUNT` 2, `TERMO_POLL_MS` 300). Un falso negativo **pausa** (Coloca termo), no cierra la sesión | Subir debounce/umbral, o esperar v0-7 VL6180, si hay parpadeo en carga |
+| ID | Tema | Qué se hizo en v0-9.0 | Resultado banco |
+|----|------|------------------------|-----------------|
+| **P-B1** | X muy corto vs cooldown UART (~7 s: cierre ~2 s + `PAUSE_COOLDOWN_MS` 5 s) | Valor servidor **20000**. Continuar no está disponible hasta `!busy && standby` | **OK** — X=20 s deja ventana para Continuar. Sin cambio de `PAUSE_TIMEOUT_MS` |
+| **P-B2** | Vapor / ToF falso “sin termo” | Debounce vigente (`TERMO_DEBOUNCE_COUNT` 2, `TERMO_POLL_MS` 300). Un falso negativo **pausa** (Coloca termo), no cierra la sesión | **OK** — sin parpadeo bloqueante. Sin cambio de debounce/umbral |
 
-No inventar histéresis extra ni piso de X en firmware hasta tener captura de banco.
+No se agregó histéresis extra ni piso de X en firmware.
 
 ### 2.2 Cambio respecto a v0-6 / v0-5-2
 
 | Aspecto | v0-6 (hoy) | v0-9 |
 |---------|------------|------|
-| Temp Cargar termo | `T_viva` cruda | Piso 80 °C en UI si `T_viva < 80` |
+| Temp Cargar termo | `T_viva` cruda | Preset **80 °C** en Iniciar; piso 80 en carga/pausa si `T_viva < 80` |
 | Litros UI | `sec/120 × 1.0`, **tope 1,0 L** | `ms/120000`, tope = `duration_ms/120000` |
 | QR desc / precio | `config.h` | Servidor (`/orders/create`); placeholder de fallback |
 | Item MP | `"Agua caliente"` hardcode | `PRODUCT_DESCRIPTION` |
@@ -94,12 +94,13 @@ No inventar histéresis extra ni piso de X en firmware hasta tener captura de ba
 ### 3.1 Comportamiento
 
 ```
+si READY_START → mostrar 80 °C (preset; no T_viva)
 si !nobana_live_temp_c → "—°C"
 si temp_c < UI_TEMP_DISPLAY_MIN_C (80) → mostrar 80
 si no → mostrar temp_c
 ```
 
-Aplicar en `refresh_temp_ui()` (o en `display_ui_set_dispense_temp_c` con un flag de fase). El Nobana sigue calentando con su receta Coffee.
+Aplicar en `refresh_temp_ui()`. El Nobana sigue calentando con su receta Coffee. El preset 80 °C en Iniciar evita mostrar el tanque frío (~15 °C) antes de que salga agua.
 
 ### 3.2 Qué no hacer
 
@@ -358,11 +359,11 @@ Sin endpoint nuevo. Sin base de datos.
 | T10 | FW | Termo afuera en `PAUSED` → Coloca termo; X no se reinicia | Reloj único |
 | T11 | FW | Timeout X en ambas fases → Finish | Igual P4 v0-5-2 |
 | T12 | FW | Parar con termo puesto = UI pausa directa (regresión) | D19 |
-| T13 | QA | P-B1: medir ventana Continuar vs X=20 s | Anotar en captura; no cambiar X salvo evidencia |
-| T14 | QA | P-B2: vapor durante carga | Anotar falsos Coloca termo |
-| T15 | QA | Regresión: bandeja, agua, post-pago, 2.ª compra, Wi-Fi | Hereda v0-6 |
+| T13 | QA | P-B1: medir ventana Continuar vs X=20 s | **OK banco 2026-09-17** — Continuar alcanzable; X sin cambio |
+| T14 | QA | P-B2: vapor durante carga | **OK banco 2026-09-17** — debounce vigente suficiente |
+| T15 | QA | Regresión: bandeja, agua, post-pago, 2.ª compra, Wi-Fi | **OK banco 2026-09-17** — hereda v0-6/v0-7 |
 | T16 | Ops | Railway: `DISPENSE_DURATION_MS=120000` si el SKU es 1 L | Alineado a D10 |
-| T17 | Doc | README sketch + este plan en índices al implementar | — |
+| T17 | Doc | README sketch + este plan en índices al implementar | Hecho 2026-09-08; cierre banco 2026-09-17 |
 
 Sketch: [`mate_point_v0-9/`](mate_point_v0-9/). Servidor: `PRODUCT_DESCRIPTION`, `PAUSE_TIMEOUT_MS`, oferta en create, `pause_timeout_ms` en MQTT.
 
@@ -370,37 +371,37 @@ Sketch: [`mate_point_v0-9/`](mate_point_v0-9/). Servidor: `PRODUCT_DESCRIPTION`,
 
 ## 10. Criterios de aceptación (banco)
 
-| ID | Criterio | Ref |
-|----|----------|-----|
-| A1 | Dispensando, `T_viva` 40–79 → UI **80 °C**; ≥ 80 → valor real; sin telem → `—°C` | D3–D5 |
-| A2 | Iniciar (`READY_START`) no muestra piso 80 si el tanque está frío (temp cruda o `—`) | D4 |
-| A3 | `duration_ms=120000` → litros van 0,0 → 1,0; no se quedan en 1,0 antes de tiempo | D7 |
-| A4 | `duration_ms=60000` → tope **0,5 L** (hoy v0-6 seguiría cap 1,0 y se vería mal) | D7 |
-| A5 | Create → QR muestra `product_description` y `price_display` del servidor | D12 |
-| A6 | Cambiar `MP_SALE_AMOUNT` + `PRODUCT_DESCRIPTION` en Railway **sin flash** → siguiente QR actualizado | D13 |
-| A7 | Item de la orden MP usa el mismo nombre | D13 |
-| A8 | Sacar termo en carga → agua para (abort pausa) → **COLOCA EL TERMO**, no LISTO EL MATE | D15, D16 |
-| A9 | Poner termo → UI pausa con Finalizar; Continuar según cooldown; **sin** flujo hasta tap Continuar | D17, D18 |
-| A10 | Parar con termo puesto → UI pausa (no Coloca termo) | D19 |
-| A11 | En pausa, sacar termo → Coloca termo; reponer → botones otra vez; X **no** se resetea | D20, D22 |
-| A12 | Esperar X (default 20 s) en Coloca termo o en pausa → Finish → Standby | D21, D23 |
-| A13 | Continuar → dispensa `remaining_ms`; litros no saltan atrás | v0-5-2 D18 |
-| A14 | Bandeja / agua en `WAIT_TERMO_RESUME` → error + cancel | D28 |
-| A15 | Post-pago sin Iniciar: Coloca termo sigue cancelando a los 120 s | D27 |
-| A16 | E2E v0-6 sin sacar termo (pago → Iniciar → 1 L o Parar/Continuar) | — |
+**Cierre banco (2026-09-17):** A1–A16 **OK**. P-B1 / P-B2 **OK** sin cambio de firmware (X=20 s; debounce ToF vigente). Sin captura UART sniffer (validación de producto/UI, igual v0-6 / v0-7).
 
-Captura Test1 objetivo: `tools/nobana_uart_sniffer/capturas/2026-XX-XX-Waveshare-Mate_point-v0-9_Test1.md`
+| ID | Criterio | Ref | Banco |
+|----|----------|-----|-------|
+| A1 | Dispensando, `T_viva` 40–79 → UI **80 °C**; ≥ 80 → valor real; sin telem → `—°C` | D3–D5 | **OK** |
+| A2 | Iniciar (`READY_START`) muestra **80 °C** (preset), no `T_viva` ni `—` | D4 | **OK** |
+| A3 | `duration_ms=120000` → litros van 0,0 → 1,0; no se quedan en 1,0 antes de tiempo | D7 | **OK** |
+| A4 | `duration_ms=60000` → tope **0,5 L** (hoy v0-6 seguiría cap 1,0 y se vería mal) | D7 | **OK** |
+| A5 | Create → QR muestra `product_description` y `price_display` del servidor | D12 | **OK** |
+| A6 | Cambiar `MP_SALE_AMOUNT` + `PRODUCT_DESCRIPTION` en Railway **sin flash** → siguiente QR actualizado | D13 | **OK** |
+| A7 | Item de la orden MP usa el mismo nombre | D13 | **OK** |
+| A8 | Sacar termo en carga → agua para (abort pausa) → **COLOCA EL TERMO**, no LISTO EL MATE | D15, D16 | **OK** |
+| A9 | Poner termo → UI pausa con Finalizar; Continuar según cooldown; **sin** flujo hasta tap Continuar | D17, D18 | **OK** |
+| A10 | Parar con termo puesto → UI pausa (no Coloca termo) | D19 | **OK** |
+| A11 | En pausa, sacar termo → Coloca termo; reponer → botones otra vez; X **no** se resetea | D20, D22 | **OK** |
+| A12 | Esperar X (default 20 s) en Coloca termo o en pausa → Finish → Standby | D21, D23 | **OK** |
+| A13 | Continuar → dispensa `remaining_ms`; litros no saltan atrás | v0-5-2 D18 | **OK** |
+| A14 | Bandeja / agua en `WAIT_TERMO_RESUME` → error + cancel | D28 | **OK** |
+| A15 | Post-pago sin Iniciar: Coloca termo sigue cancelando a los 120 s | D27 | **OK** |
+| A16 | E2E v0-6 sin sacar termo (pago → Iniciar → 1 L o Parar/Continuar) | — | **OK** |
 
-**Procedimiento banco sugerido**
+**Procedimiento banco (ejecutado)**
 
 1. Create Postman: ver oferta en JSON; pagar → QR en máquina con el mismo copy.
-2. Iniciar con tanque no a régimen: temp UI 80 °C; Serial muestra `T_viva` real.
+2. Iniciar: **antes** del tap, UI **80 °C** (preset). Tras Iniciar con tanque frío: sigue 80 °C hasta `T_viva ≥ 80`; Serial muestra `T_viva` real.
 3. MQTT 120000: llenar hasta 1,0 L / Finish.
 4. MQTT 60000 (prueba): tope 0,5 L.
 5. Dispensar ~5 s → sacar termo → Coloca termo → reponer → botones → Continuar → completa.
 6. Dispensar → Parar → (termo sigue) Continuar (regresión pausa).
 7. Dispensar → sacar termo → esperar X → Finish.
-8. P-B1 / P-B2: anotar tiempos Continuar y falsos ToF; **no** retocar debounce/X en el mismo commit salvo fallo bloqueante.
+8. P-B1 / P-B2: Continuar alcanzable con X=20 s; sin falsos ToF bloqueantes. **Sin** retoque de debounce/X.
 
 ---
 
@@ -450,7 +451,7 @@ Orden de implementación: **T2 → T3 → T4–T5 → T6–T12 → T13–T16**.
 
 ---
 
-## 14. Estructura objetivo (cuando se implemente)
+## 14. Estructura
 
 ```
 mate_point_firmware/mate_point_v0-9/
@@ -475,5 +476,7 @@ servidor/
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-09-17 | **Cerrado E2E OK hardware** — A1–A16; P-B1 X=20 s suficiente; P-B2 debounce vigente; sin cambio de firmware |
+| 2026-09-08 | Banco: Iniciar (`READY_START`) muestra preset 80 °C, no `T_viva` (revierte D4 original) |
 | 2026-09-08 | Implementado desde v0-7 — `mate_point_v0-9/` + servidor oferta/`pause_timeout_ms`. Railway `DISPENSE_DURATION_MS=120000`. QA banco pendiente |
 | 2026-09-02 | Plan inicial v0-9 — piso 80 °C UI; litros = ms/120000; oferta create; retiro termo → Coloca termo → pausa → Continuar manual; X vía MQTT. P-B1 y P-B2 abiertos a banco |

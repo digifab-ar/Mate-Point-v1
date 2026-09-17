@@ -251,7 +251,7 @@ POST /webhook/mp
 ├─ 8. Validar orden en respuesta GET
 │     • status === "processed"
 │     • status_detail === "accredited"
-│     • config.qr.external_pos_id === MP_EXTERNAL_POS_ID (opcional, recomendado)
+│     • config.qr.external_pos_id ∈ registro devices.json (v0-8)
 │     • total_paid_amount === total_amount === MP_SALE_AMOUNT (obligatorio, ver §5.2.7)
 │     • Si no cumple → HTTP 200 + log skip (no dispensar)
 │
@@ -457,7 +457,6 @@ Definir en Railway → Variables (y localmente en `.env`, **nunca commitear**):
 # MercadoPago
 MP_ACCESS_TOKEN=APP_USR-...          # Token sandbox (cambiar a prod en Fase 6)
 MP_USER_ID=3420512522
-MP_EXTERNAL_POS_ID=MATEPOINT001POS001
 MP_WEBHOOK_SECRET=                   # Clave secreta de la app en el portal MP
 MP_SALE_AMOUNT=500.00                # Precio por porción (ARS); mínimo MP $ 15.00
 PRODUCT_DESCRIPTION=Recarga de 1 litro  # Nombre en QR (v0-9) e item Mercado Pago
@@ -467,7 +466,7 @@ MQTT_BROKER_URL=wss://broker.hivemq.com:8884/mqtt
 # HiveMQ Cloud (alternativa con auth): ssl://xxxx.s1.eu.hivemq.cloud:8883
 # MQTT_USER=
 # MQTT_PASS=
-MQTT_DEVICE_ID=MATEPOINT001
+# v0-8: mapa device_id ↔ caja en src/config/devices.json (no MQTT_DEVICE_ID / MP_EXTERNAL_POS_ID)
 DISPENSE_DURATION_MS=120000          # SKU 1 L (120 s de flujo = 1 L en UI v0-9)
 PAUSE_TIMEOUT_MS=20000               # Sesión abierta tras Parar / retiro de termo
 
@@ -483,6 +482,8 @@ NODE_ENV=production
 ```
 servidor-mate-point/
 ├── src/
+│   ├── config/
+│   │   └── devices.json    # v0-8: flota device_id ↔ external_pos_id
 │   ├── index.js            # Entry point: Express app + MQTT connect
 │   ├── routes/
 │   │   ├── health.js       # GET /health
@@ -490,6 +491,7 @@ servidor-mate-point/
 │   │   └── webhook.js      # POST /webhook/mp
 │   ├── services/
 │   │   ├── mercadopago.js  # Wrapper SDK MP: createOrder, getOrder
+│   │   ├── devices.js      # v0-8: device_id ↔ external_pos_id
 │   │   └── mqtt.js         # Cliente MQTT: connect, publish
 │   └── utils/
 │       └── signature.js    # validateMpSignature()
@@ -630,4 +632,4 @@ Detalle ampliado: `integracion-mercadopago-qr.md` §0.2 · `plan-de-implementaci
 | 2026-05-27 | Documento creado — arquitectura, stack, Railway y HiveMQ definidos para Fase 3 |
 | 2026-05-27 | Repo Mate-Point-v1; broker público HiveMQ (8884 WSS servidor, 1883 TCP ESP32); scaffold en `servidor/` |
 | 2026-05-27 | **Fase 3 completada** — checklist §11; e2e `ORDTST01KSNFEN3H3FTHXMK9Q1ZPE5NZ` con `mqtt_published` |
-| 2026-05-29 | **`POST /orders/create`** y **`POST /orders/cancel`** — órdenes desde ESP32 v0.2; `MP_ORDER_EXPIRATION=PT2M` |
+| 2026-09-17 | **v0-8** — registro 4 `device_id`; create/webhook MQTT por POS; `devices.json` |

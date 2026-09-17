@@ -2,7 +2,7 @@
 
 **Proyecto:** Mate Point — Dispensador de agua caliente  
 **OT:** OT-00268 — Etapa 3  
-**Última actualización:** 2026-09-08  
+**Última actualización:** 2026-09-17  
 **Repositorio:** [github.com/digifab-ar/Mate-Point-v1](https://github.com/digifab-ar/Mate-Point-v1)  
 **Servidor (Railway):** `https://mate-point-v1-production.up.railway.app`
 
@@ -19,7 +19,8 @@
 | **Fase 4 — UART Nobana (4.4–4.10)** | Cerrado en producto v0-3+ | Tramas y dispensado real: ver [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](mate_point_firmware/PLAN-IMPLEMENTACION.md) |
 | **Firmware producto v0-3…v0-6** | **v0-6 E2E OK** (2026-06-25) | Nobana + VL53L0X + bandeja + pausa + Wi-Fi NVS |
 | **Firmware v0-7 — VL6180** | **OK hardware** (2026-09-08) | Reemplazo ToF termo. [`PLAN-MATE-POINT-v0-7.md`](mate_point_firmware/PLAN-MATE-POINT-v0-7.md) |
-| **Firmware v0-9 — oferta / litros / retiro termo** | **Implementado** (QA banco pendiente) | Fork v0-7. [`PLAN-MATE-POINT-v0-9.md`](mate_point_firmware/PLAN-MATE-POINT-v0-9.md) |
+| **Firmware v0-9 — oferta / litros / retiro termo** | **E2E OK hardware** (2026-09-17) | Fork v0-7. [`PLAN-MATE-POINT-v0-9.md`](mate_point_firmware/PLAN-MATE-POINT-v0-9.md) |
+| **Firmware v0-8 — flota 4 máquinas** | **Implementado** (2026-09-17) | Fork v0-9. Pendiente provision MP + PNG + QA. [`PLAN-MATE-POINT-v0-8.md`](mate_point_firmware/PLAN-MATE-POINT-v0-8.md) |
 | **Fase 5 — Pantalla QR + UX** | Parcial | QR PROGMEM v0.2 + countdown; 5 pantallas y QR dinámico MQTT pendientes |
 | **Fase 6 — Producción MP** | Pendiente | Credenciales prod, webhook modo productivo |
 
@@ -41,7 +42,7 @@ Ver tabla completa en `integracion-mercadopago-qr.md` §10. Resumen:
 | 1 | App MP + sucursal + caja | **Completado** |
 | 2 | Crear órdenes QR estático y probar pago (Postman) | **Completado** |
 | 3 | Webhook + backend (Railway + Node.js + MQTT) | **Completado** |
-| 4 | MQTT + ESP32 → UART Nobana (TXS0108E) | **POC 4.1–4.3 + v0.2 ✅** · UART y producto **v0-3…v0-6 E2E** · **v0-7 VL6180 OK hardware** · **v0-9 implementado** |
+| 4 | MQTT + ESP32 → UART Nobana (TXS0108E) | **POC 4.1–4.3 + v0.2 ✅** · UART y producto **v0-3…v0-6 E2E** · **v0-7 VL6180 OK hardware** · **v0-9 E2E OK hardware** |
 | **5** | **Pantalla QR + UX máquina** | **Parcial** (LVGL + MQTT en POC) |
 | 6 | Producción (credenciales prod, HTTPS) | Pendiente |
 
@@ -326,7 +327,8 @@ Establecer el broker MQTT e implementar en el firmware del Waveshare ESP32-S3 la
 | 4.9 | Temperatura Nobana en `status` | 4.4 | Pendiente |
 | 4.10 | E2E: MQTT → UART → dispensado real | 4.1–4.8 | **Cerrado en producto** v0-3+ — [`PLAN-IMPLEMENTACION.md`](mate_point_firmware/PLAN-IMPLEMENTACION.md) |
 | **4.11** | **v0-7: reemplazar VL53L0X por VL6180** (I2C `0x29`, ~1 cm al termo) | v0-6 | **Cerrado** — [`PLAN-MATE-POINT-v0-7.md`](mate_point_firmware/PLAN-MATE-POINT-v0-7.md) · OK hardware 2026-09-08 |
-| **4.12** | **v0-9: oferta servidor, litros, piso 80 °C, retiro termo = pausa** | v0-7 | **Implementado** — QA banco pendiente · [`PLAN-MATE-POINT-v0-9.md`](mate_point_firmware/PLAN-MATE-POINT-v0-9.md) |
+| **4.12** | **v0-9: oferta servidor, litros, piso 80 °C, retiro termo = pausa** | v0-7 | **Cerrado** — E2E OK hardware 2026-09-17 · [`PLAN-MATE-POINT-v0-9.md`](mate_point_firmware/PLAN-MATE-POINT-v0-9.md) |
+| **4.13** | **v0-8: flota 4 `device_id`, sucursal `MATEPOINT`, caja/QR por máquina** | v0-9 | **Implementado** — pendiente provision MP + PNG + QA · [`PLAN-MATE-POINT-v0-8.md`](mate_point_firmware/PLAN-MATE-POINT-v0-8.md) |
 
 ### Diagrama de flujo Fase 4
 
@@ -371,7 +373,7 @@ Backend                  Broker MQTT              Waveshare ESP32-S3
 - [x] Timeout 2 min → cancel HTTP → **Comprar**
 - [x] **Validación hardware:** escaneo QR + E2E sin Postman ✅ (2026-05-29)
 
-**Fase 4 completa (4.4–4.10):** cerrado en firmware producto v0-3…v0-6 (Nobana UART, gate termo VL53L0X, UI Figma, bandeja, pausa, Wi-Fi NVS). **4.11** cerrado en v0-7 (VL6180). **4.12** implementado en v0-9 (oferta/litros/retiro termo; QA banco pendiente). Detalle: [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](mate_point_firmware/PLAN-IMPLEMENTACION.md).
+**Fase 4 completa (4.4–4.10):** cerrado en firmware producto v0-3…v0-6 (Nobana UART, gate termo VL53L0X, UI Figma, bandeja, pausa, Wi-Fi NVS). **4.11** cerrado en v0-7 (VL6180). **4.12** cerrado en v0-9 (oferta/litros/retiro termo; E2E OK hardware 2026-09-17). **4.13** v0-8 flota implementado (pendiente alta MP + QA). Detalle: [`mate_point_firmware/PLAN-IMPLEMENTACION.md`](mate_point_firmware/PLAN-IMPLEMENTACION.md).
 
 **Hito 4.11 — v0-7 VL6180 (cerrado 2026-09-08):**
 
@@ -381,14 +383,26 @@ Backend                  Broker MQTT              Waveshare ESP32-S3
 - Spec: [`PLAN-MATE-POINT-v0-7.md`](mate_point_firmware/PLAN-MATE-POINT-v0-7.md)
 - Sketch: [`mate_point_v0-7/`](mate_point_firmware/mate_point_v0-7/)
 
-**Hito 4.12 — v0-9 oferta / litros / retiro termo (implementado 2026-09-08):**
+**Hito 4.12 — v0-9 oferta / litros / retiro termo (cerrado 2026-09-17):**
 
 - [x] Piso 80 °C en UI Cargar termo (`DISPENSING` / `PAUSED`)
 - [x] Litros = `dispensed_ms / 120000`; tope = `duration_ms / 120000`
 - [x] `POST /orders/create` → `product_description` + `price_display`; item MP desde `PRODUCT_DESCRIPTION`
 - [x] MQTT `pause_timeout_ms`; fase `WAIT_TERMO_RESUME` (retiro = pausa, Continuar manual)
+- [x] **E2E hardware** A1–A16; P-B1 X=20 s suficiente; P-B2 debounce vigente (sin cambio de firmware)
 - Spec: [`PLAN-MATE-POINT-v0-9.md`](mate_point_firmware/PLAN-MATE-POINT-v0-9.md)
 - Sketch: [`mate_point_v0-9/`](mate_point_firmware/mate_point_v0-9/)
+
+**Hito 4.13 — v0-8 flota (implementado 2026-09-17):**
+
+- [x] Registro `device_id` ↔ `external_pos_id` (4 máquinas)
+- [x] `POST /orders/create` elige el POS del `device_id` (400 si desconocido)
+- [x] Webhook publica `mate/{device_id}/command`
+- [x] Fork firmware v0-9 → `mate_point_v0-8/` (`MQTT_CLIENT_ID` v080)
+- [ ] Alta sucursal `MATEPOINT` + 4 cajas (script `provision-mp-v08`)
+- [ ] PNG LVGL por unidad + QA E2E
+- Spec: [`PLAN-MATE-POINT-v0-8.md`](mate_point_firmware/PLAN-MATE-POINT-v0-8.md)
+- Sketch: [`mate_point_v0-8/`](mate_point_firmware/mate_point_v0-8/)
 
 ---
 
@@ -601,6 +615,8 @@ Fase 6 (Producción)
 | 2026-05-29 | **POC v0.2 implementada** — firmware [`mate_point_v0-2`](mate_point_firmware/mate_point_v0-2/), endpoints órdenes, QR PROGMEM |
 | 2026-05-29 | **Plan POC completa v0.2** — Comprar → QR estático → pago / timeout 2 min (§ POC completa v0.2) |
 | 2026-05-29 | **E2E hardware v0.2 validado** — Comprar → QR → pago MP → Dispensado (120 s) → terminado → Listo → Comprar; WiFi + MQTT OK |
+| 2026-09-17 | **Hito v0-8 implementado** — flota 4 máquinas; registro POS; fork [`mate_point_v0-8/`](mate_point_firmware/mate_point_v0-8/) · spec [`PLAN-MATE-POINT-v0-8.md`](mate_point_firmware/PLAN-MATE-POINT-v0-8.md) |
+| 2026-09-17 | **Hito v0-9 cerrado (E2E OK hardware)** — A1–A16; P-B1 / P-B2 sin cambio de firmware; spec [`PLAN-MATE-POINT-v0-9.md`](mate_point_firmware/PLAN-MATE-POINT-v0-9.md) §10 |
 | 2026-09-08 | **Hito v0-9 implementado** — oferta create, litros ms/120000, piso 80 °C UI, `WAIT_TERMO_RESUME`; sketch [`mate_point_v0-9/`](mate_point_firmware/mate_point_v0-9/) · spec [`PLAN-MATE-POINT-v0-9.md`](mate_point_firmware/PLAN-MATE-POINT-v0-9.md) |
 | 2026-09-08 | **Hito v0-7 cerrado (OK hardware)** — VL6180 @ 0x29; SDA/SCL invertidos era el blocker de init; sketch [`mate_point_v0-7/`](mate_point_firmware/mate_point_v0-7/) |
 | 2026-09-08 | **Hito v0-7 (implementado)** — driver VL6180; spec [`PLAN-MATE-POINT-v0-7.md`](mate_point_firmware/PLAN-MATE-POINT-v0-7.md) |

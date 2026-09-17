@@ -8,7 +8,8 @@
   },
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "provision:mp-v08": "node scripts/provision-mp-v08.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

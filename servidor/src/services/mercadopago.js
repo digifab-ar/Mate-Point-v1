@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { getDeviceByPos } = require('./devices');
 
 const MP_API_BASE = 'https://api.mercadopago.com';
 
@@ -44,7 +45,6 @@ async function getOrder(orderId) {
  */
 function validateOrderForDispense(order) {
   const expectedAmount = normalizeAmount(process.env.MP_SALE_AMOUNT || '500.00');
-  const expectedPos = process.env.MP_EXTERNAL_POS_ID || 'MATEPOINT001POS001';
 
   if (order.status !== 'processed') {
     return { ok: false, reason: `status_${order.status}` };
@@ -60,8 +60,11 @@ function validateOrderForDispense(order) {
   if (qr?.mode !== 'static') {
     return { ok: false, reason: `qr_mode_${qr?.mode}` };
   }
-  if (qr?.external_pos_id !== expectedPos) {
-    return { ok: false, reason: 'external_pos_mismatch' };
+
+  const externalPosId = (qr?.external_pos_id || '').toString().trim();
+  const device = getDeviceByPos(externalPosId);
+  if (!device) {
+    return { ok: false, reason: 'unknown_pos', external_pos_id: externalPosId };
   }
 
   const total = normalizeAmount(order.total_amount);
@@ -81,7 +84,12 @@ function validateOrderForDispense(order) {
     return { ok: false, reason: `payment_status_${payment.status}` };
   }
 
-  return { ok: true, reason: 'ok' };
+  return {
+    ok: true,
+    reason: 'ok',
+    device_id: device.deviceId,
+    external_pos_id: device.externalPosId,
+  };
 }
 
 function getProductDescription() {
@@ -112,11 +120,14 @@ function generateExternalReference(deviceId) {
 
 /**
  * POST /v1/orders — QR estático (§5.3 integracion-mercadopago-qr.md)
- * @param {{ deviceId?: string, externalReference?: string }} params
+ * @param {{ deviceId?: string, externalPosId: string, externalReference?: string }} params
  */
 async function createStaticQrOrder(params = {}) {
   const amount = normalizeAmount(process.env.MP_SALE_AMOUNT || '500.00');
-  const posId = process.env.MP_EXTERNAL_POS_ID || 'MATEPOINT001POS001';
+  const posId = (params.externalPosId || '').toString().trim();
+  if (!posId) {
+    throw new Error('externalPosId requerido para crear la orden');
+  }
   const expiration = process.env.MP_ORDER_EXPIRATION || 'PT2M';
   const productDescription = getProductDescription();
   const externalReference = params.externalReference

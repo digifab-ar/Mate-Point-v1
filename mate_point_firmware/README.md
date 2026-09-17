@@ -14,15 +14,17 @@ Firmware Arduino Fase 4: LVGL + Wi‑Fi + MQTT; POC UART Nobana en ESP32 aparte.
 | [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) | Pausa / reanudar Cargar termo |
 | [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) | **Wi-Fi SoftAP + portal (NVS)** |
 | [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) | **VL6180** — reemplazo ToF termo · **cerrado** |
-| [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) | Oferta servidor, litros, piso 80 °C, retiro termo = pausa |
+| [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) | Oferta servidor, litros, piso 80 °C, retiro termo = pausa · **cerrado** |
+| [`PLAN-MATE-POINT-v0-8.md`](PLAN-MATE-POINT-v0-8.md) | Flota 4 máquinas, sucursal `MATEPOINT`, caja/QR por `device_id` · **implementado** |
 | [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) | Plan temporal Fase 4 POC (cerrado 2026-05-29) |
 | [`plan-de-implementacion.md`](../plan-de-implementacion.md) | Plan general fases 0–6 |
 
-## Estado (2026-09-08)
+## Estado (2026-09-17)
 
 | Versión | Carpeta | Estado |
 |---------|---------|--------|
-| **v0-9** | [`mate_point_v0-9/`](mate_point_v0-9/) | **Implementado** — oferta servidor + litros + pausa por retiro termo (QA banco pendiente) |
+| **v0-8** | [`mate_point_v0-8/`](mate_point_v0-8/) | **Implementado** — flota 4 `device_id` (pendiente PNG de caja + QA) |
+| **v0-9** | [`mate_point_v0-9/`](mate_point_v0-9/) | **E2E OK hardware** — oferta servidor + litros + pausa por retiro termo (2026-09-17) |
 | **v0-7** | [`mate_point_v0-7/`](mate_point_v0-7/) | **OK hardware** — VL6180 @ 0x29 (2026-09-08) |
 | **v0-6** | [`mate_point_v0-6/`](mate_point_v0-6/) | **E2E OK** hardware — Wi-Fi NVS + SoftAP + portal web ✅ |
 | **v0-5-2** | [`mate_point_v0-5-2/`](mate_point_v0-5-2/) | **Implementado** — pausa/reanudar; UI OK hardware |
@@ -42,7 +44,8 @@ Firmware Arduino Fase 4: LVGL + Wi‑Fi + MQTT; POC UART Nobana en ESP32 aparte.
 ## Qué abrir en Arduino IDE
 
 ```
-mate_point_firmware/mate_point_v0-9/mate_point_v0-9.ino              ← producto actual: oferta servidor + VL6180
+mate_point_firmware/mate_point_v0-8/mate_point_v0-8.ino              ← flota: DEVICE_ID + QR por caja
+mate_point_firmware/mate_point_v0-9/mate_point_v0-9.ino              ← oferta servidor + VL6180
 mate_point_firmware/mate_point_v0-7/mate_point_v0-7.ino              ← VL6180 + Wi-Fi NVS
 mate_point_firmware/mate_point_v0-6/mate_point_v0-6.ino              ← Wi-Fi NVS + portal (VL53L0X)
 mate_point_firmware/mate_point_v0-5-2/mate_point_v0-5-2.ino        ← pausa / reanudar Cargar termo
@@ -56,6 +59,8 @@ Placa POC UART (ESP32 Dev): **NodeMCU 38p** · v0-1 / v0-2 · ver [`PLAN-POC-NOB
 ## Configuración
 
 Editar `config.h` del sketch activo.
+
+**v0-8:** Igual v0-9 + `DEVICE_ID` / QR por unidad (`MQTT_CLIENT_ID` v080). Servidor rutea por `devices.json`.
 
 **v0-9:** Igual v0-7 + oferta/`pause_timeout_ms` del servidor; litros = `ms/120000`; piso 80 °C en UI.
 
@@ -71,10 +76,10 @@ Editar `config.h` del sketch activo.
 
 ## Visibilidad MQTT
 
-Broker: `broker.hivemq.com:1883` · topics: `mate/MATEPOINT001/command`, `mate/MATEPOINT001/status`
+Broker: `broker.hivemq.com:1883` · topics: `mate/{device_id}/command`, `mate/{device_id}/status`
 
 ```bash
-mosquitto_sub -h broker.hivemq.com -p 1883 -t 'mate/MATEPOINT001/#' -v
+mosquitto_sub -h broker.hivemq.com -p 1883 -t 'mate/+/#' -v
 ```
 
 Pruebas CLI: [`PLAN-IMPLEMENTACION.md` §8](PLAN-IMPLEMENTACION.md) · POC v0.2: **§14–§15**.

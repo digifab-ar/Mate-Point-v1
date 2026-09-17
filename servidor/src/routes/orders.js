@@ -5,6 +5,7 @@ const {
   getProductDescription,
   formatPriceDisplay,
 } = require('../services/mercadopago');
+const { getDeviceById } = require('../services/devices');
 
 const router = express.Router();
 
@@ -17,16 +18,34 @@ function logEvent(event, fields = {}) {
  * Crea orden QR estático en Mercado Pago (ESP32 / Postman).
  */
 router.post('/create', async (req, res) => {
-  const deviceId = (req.body?.device_id || process.env.MQTT_DEVICE_ID || 'MATEPOINT001')
-    .toString()
-    .trim();
+  const deviceId = (req.body?.device_id || '').toString().trim();
+  if (!deviceId) {
+    return res.status(400).json({
+      error: 'missing_device_id',
+      message: 'Body requiere device_id',
+    });
+  }
+
+  const device = getDeviceById(deviceId);
+  if (!device) {
+    logEvent('order_create_rejected', { device_id: deviceId, reason: 'unknown_device_id' });
+    return res.status(400).json({
+      error: 'unknown_device_id',
+      message: 'device_id no está en el registro de la flota',
+      device_id: deviceId,
+    });
+  }
 
   try {
-    const order = await createStaticQrOrder({ deviceId });
+    const order = await createStaticQrOrder({
+      deviceId: device.deviceId,
+      externalPosId: device.externalPosId,
+    });
     logEvent('order_created', {
       order_id: order.id,
       external_reference: order.external_reference,
-      device_id: deviceId,
+      device_id: device.deviceId,
+      external_pos_id: device.externalPosId,
       status: order.status,
     });
 
@@ -38,11 +57,13 @@ router.post('/create', async (req, res) => {
       product_description: getProductDescription(),
       price_display: formatPriceDisplay(order.total_amount),
       expiration_time: process.env.MP_ORDER_EXPIRATION || 'PT2M',
-      device_id: deviceId,
+      device_id: device.deviceId,
+      external_pos_id: device.externalPosId,
     });
   } catch (err) {
     logEvent('order_create_failed', {
-      device_id: deviceId,
+      device_id: device.deviceId,
+      external_pos_id: device.externalPosId,
       message: err.message,
       status: err.status,
     });

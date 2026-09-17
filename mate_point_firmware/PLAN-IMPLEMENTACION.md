@@ -3,7 +3,7 @@
 **Proyecto:** Mate Point — OT-00268 Etapa 3  
 **Base hardware producto:** Waveshare ESP32-S3-Touch-LCD-7B  
 **Device ID:** `MATEPOINT001`  
-**Última actualización:** 2026-09-08  
+**Última actualización:** 2026-09-17  
 
 | Hito | Estado |
 |------|--------|
@@ -21,7 +21,8 @@
 | Producto [`mate_point_v0-5-2`](mate_point_v0-5-2/) — pausa / reanudar Cargar termo | **Implementado** — UI pausa OK hardware · [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) |
 | Producto [`mate_point_v0-6`](mate_point_v0-6/) — Wi-Fi SoftAP + portal web (NVS) | **E2E OK** hardware 2026-06-25 · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) · [`mate_point_v0-6/README.md`](mate_point_v0-6/README.md) |
 | Producto [`mate_point_v0-7`](mate_point_v0-7/) — VL6180 (reemplazo VL53L0X) | **OK hardware** 2026-09-08 · [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) · [`mate_point_v0-7/README.md`](mate_point_v0-7/README.md) |
-| Producto [`mate_point_v0-9`](mate_point_v0-9/) — oferta servidor + litros + retiro termo | **Implementado** · QA banco pendiente · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) · [`mate_point_v0-9/README.md`](mate_point_v0-9/README.md) |
+| Producto [`mate_point_v0-9`](mate_point_v0-9/) — oferta servidor + litros + retiro termo | **E2E OK hardware** 2026-09-17 · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) · [`mate_point_v0-9/README.md`](mate_point_v0-9/README.md) |
+| Producto [`mate_point_v0-8`](mate_point_v0-8/) — flota 4 `device_id` / cajas MP | **Implementado** 2026-09-17 — pendiente provision MP + PNG + QA · [`PLAN-MATE-POINT-v0-8.md`](PLAN-MATE-POINT-v0-8.md) · [`mate_point_v0-8/README.md`](mate_point_v0-8/README.md) |
 
 Referencias: [`fase-4-plan-4.1-4.3-TEMP.md`](../fase-4-plan-4.1-4.3-TEMP.md) · [`plan-de-implementacion.md`](../plan-de-implementacion.md) § Fase 4 · [`PROTOCOLO-UART-NOBANA.md`](PROTOCOLO-UART-NOBANA.md) · [`PLAN-POC-NOBANA-UART.md`](PLAN-POC-NOBANA-UART.md) · [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md) · [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md) · [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md) · [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md) · [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md) · [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md) · [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) · [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) · [`UI-DISCREPANCIAS-v0-4.md`](UI-DISCREPANCIAS-v0-4.md) · [`PLAN-MATE-POINT-UART-v0-3.md`](PLAN-MATE-POINT-UART-v0-3.md) · [`servidor-mate-point.md`](../servidor-mate-point.md) §9 · [`servidor/src/services/mqtt.js`](../servidor/src/services/mqtt.js) · [`UI/figma/`](../UI/figma/)
 
@@ -625,6 +626,9 @@ Resumen de la cadena UART; **detalle normativo del bus** en [`PROTOCOLO-UART-NOB
 | **2b-7** | [`mate_point_v0-5-1/`](mate_point_v0-5-1/) · [PLAN v0-5-1](PLAN-MATE-POINT-v0-5-1.md) | **E2E OK** banco 2026-06-24 (V6/V7) | Tanque vacío UART (`b2=0x10`, byte 7); `UI_ERR_AGUA`; `ensure_tank_monitor_poll()` |
 | **2b-8** | [`mate_point_v0-5-2/`](mate_point_v0-5-2/) · [PLAN v0-5-2](PLAN-MATE-POINT-v0-5-2.md) | **Implementado** — UI pausa OK hardware | Pausa: cooldown **5 s**; Continuar oculto → visible; Finalizar fijo; timer 20 s |
 | **2b-9** | [`mate_point_v0-6/`](mate_point_v0-6/) · [PLAN v0-6](PLAN-MATE-POINT-v0-6.md) | **E2E OK** hardware 2026-06-25 | Wi-Fi NVS + SoftAP + portal web; pantallas Error-wifi / Error-mqtt / Configurar red |
+| **2b-10** | [`mate_point_v0-7/`](mate_point_v0-7/) · [PLAN v0-7](PLAN-MATE-POINT-v0-7.md) | **OK hardware** 2026-09-08 | VL6180 @ I2C `0x29`; offset 0 / umbral 15 mm |
+| **2b-11** | [`mate_point_v0-9/`](mate_point_v0-9/) · [PLAN v0-9](PLAN-MATE-POINT-v0-9.md) | **E2E OK** hardware 2026-09-17 | Oferta create; litros ms/120000; piso 80 °C UI; `WAIT_TERMO_RESUME` |
+| **2b-12** | [`mate_point_v0-8/`](mate_point_v0-8/) · [PLAN v0-8](PLAN-MATE-POINT-v0-8.md) | **Implementado** 2026-09-17 | Flota 4 `device_id`; sucursal `MATEPOINT`; create/webhook por POS |
 | *(ref)* | [`mate_point_v0-2/`](mate_point_v0-2/) | Completado | Dispensado simulado — base de fork v0-3 |
 
 | Tema | Referencia |
@@ -641,7 +645,7 @@ Resumen de la cadena UART; **detalle normativo del bus** en [`PROTOCOLO-UART-NOB
 
 ## 17. Producto `mate_point_v0-3` … `mate_point_v0-5-2` (índice)
 
-Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Plan v0-3-4: [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md). Plan UI v0-4: [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md). Plan v0-5: [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md). Plan v0-5-1: [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md). Plan v0-5-2: [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md). Plan v0-6: [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md).
+Plan normativo: [`PLAN-MATE-POINT-v0-3.md`](PLAN-MATE-POINT-v0-3.md). Plan v0-3-4: [`PLAN-MATE-POINT-v0-3-4.md`](PLAN-MATE-POINT-v0-3-4.md). Plan UI v0-4: [`PLAN-MATE-POINT-v0-4-UI.md`](PLAN-MATE-POINT-v0-4-UI.md). Plan v0-5: [`PLAN-MATE-POINT-v0-5.md`](PLAN-MATE-POINT-v0-5.md). Plan v0-5-1: [`PLAN-MATE-POINT-v0-5-1.md`](PLAN-MATE-POINT-v0-5-1.md). Plan v0-5-2: [`PLAN-MATE-POINT-v0-5-2.md`](PLAN-MATE-POINT-v0-5-2.md). Plan v0-6: [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md). Plan v0-7: [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md). Plan v0-9: [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md). Plan v0-8: [`PLAN-MATE-POINT-v0-8.md`](PLAN-MATE-POINT-v0-8.md).
 
 | Tema | v0-3-3 — **banco OK** | v0-3-4 — **banco OK** | v0-4 — **hardware OK** | v0-5 — **banco OK** |
 |------|------------------------|------------------------|-------------------------|-------------------------|
@@ -704,17 +708,31 @@ Assets UI: [`../UI/figma/`](../UI/figma/) · Wireframe: [Figma Mate Point](https
 
 ### 17.4 Producto v0-9 — oferta / litros / retiro termo
 
-| Tema | v0-9 — **Implementado** (QA banco pendiente) |
-|------|-----------------------------------------------|
+| Tema | v0-9 — **E2E OK hardware** 2026-09-17 |
+|------|--------------------------------------|
 | Base | Fork v0-7 (v0-8 flota queda para el final) |
-| Temp UI | Piso 80 °C en Cargar termo (`DISPENSING` / `PAUSED`); Serial crudo |
+| Temp UI | Preset 80 °C en Iniciar; piso 80 en `DISPENSING` / `PAUSED`; Serial crudo |
 | Litros | `ms / 120000`; tope = `duration_ms / 120000` |
 | Oferta QR | `product_description` + `price_display` en `POST /orders/create` |
 | Retiro termo | Pausa UART + `WAIT_TERMO_RESUME` + Continuar manual |
 | Timer X | MQTT `pause_timeout_ms`; fallback 20 s |
 | MQTT | `MQTT_CLIENT_ID` sufijo **v090** |
 | Servidor | `PRODUCT_DESCRIPTION`, `PAUSE_TIMEOUT_MS`; Railway `DISPENSE_DURATION_MS=120000` |
+| Banco | A1–A16 OK; P-B1 X=20 s suficiente; P-B2 debounce vigente; sin cambio de firmware |
 | Doc | [`mate_point_v0-9/README.md`](mate_point_v0-9/README.md) · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) |
+
+### 17.5 Producto v0-8 — flota 4 máquinas
+
+| Tema | v0-8 — **implementado** 2026-09-17 |
+|------|-------------------------------------|
+| Base | Fork v0-9 |
+| Identidad | `DEVICE_ID` `MATEPOINT001`…`004`; `MQTT_CLIENT_ID` sufijo **v080** |
+| MP | Sucursal nueva `MATEPOINT` (Santamarina 1352); 4 cajas `MATEPOINT00nPOS001` |
+| Servidor | `src/config/devices.json`; create elige POS; webhook publica `mate/{device_id}/command` |
+| QR | PNG de **esa** caja → `qr_static_img.c` (el del POC no sirve) |
+| Alta | `servidor/scripts/provision-mp-v08.js` |
+| Banco | Pendiente provision + flash PNG + E2E |
+| Doc | [`mate_point_v0-8/README.md`](mate_point_v0-8/README.md) · [`PLAN-MATE-POINT-v0-8.md`](PLAN-MATE-POINT-v0-8.md) |
 
 ---
 
@@ -722,6 +740,8 @@ Assets UI: [`../UI/figma/`](../UI/figma/) · Wireframe: [Figma Mate Point](https
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-09-17 | **v0-8 implementado** — fork v0-9; registro 4 devices; create/webhook MQTT por POS; [`mate_point_v0-8/`](mate_point_v0-8/) · [`PLAN-MATE-POINT-v0-8.md`](PLAN-MATE-POINT-v0-8.md) |
+| 2026-09-17 | **v0-9 E2E OK hardware** — A1–A16; P-B1 / P-B2 sin cambio de firmware; [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) §10 |
 | 2026-09-08 | **v0-9 implementado** — fork v0-7; oferta create; litros ms/120000; piso 80 °C UI; `WAIT_TERMO_RESUME`; [`mate_point_v0-9/`](mate_point_v0-9/) · [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) |
 | 2026-09-08 | **v0-7 OK hardware** — VL6180 @ 0x29; SDA/SCL invertidos era el blocker de init; debug UI off; [`mate_point_v0-7/`](mate_point_v0-7/) |
 | 2026-09-08 | **v0-7 implementado** — driver VL6180 `i2c_master`; [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) |

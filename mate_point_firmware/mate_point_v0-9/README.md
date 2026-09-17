@@ -8,7 +8,7 @@ Oferta y sesión de carga según el servidor — fork de [`mate_point_v0-7`](../
 | [`PLAN-MATE-POINT-v0-7.md`](../PLAN-MATE-POINT-v0-7.md) | Herencia: VL6180 |
 | [`PLAN-MATE-POINT-v0-6.md`](../PLAN-MATE-POINT-v0-6.md) | Herencia: SoftAP + portal NVS |
 
-**Estado:** **Implementado** (2026-09-08) — QA banco pendiente (A1–A16, P-B1, P-B2).
+**Estado:** **E2E OK hardware** (2026-09-17) — A1–A16; P-B1 / P-B2 sin cambio de firmware.
 
 ---
 
@@ -16,7 +16,7 @@ Oferta y sesión de carga según el servidor — fork de [`mate_point_v0-7`](../
 
 Cuatro ajustes de producto **sin reflash** en cada cambio comercial (salvo el piso 80 °C, que queda en firmware):
 
-1. **Temperatura en Cargar termo:** si `T_viva < 80` °C, la UI muestra **80 °C**; si no, el valor real. Solo `DISPENSING` / `PAUSED`. Serial y MQTT siguen con la telemetría cruda.
+1. **Temperatura en Cargar termo:** en **Iniciar** la UI muestra **80 °C** (preset, no `T_viva`). Tras arrancar: si `T_viva < 80` °C, sigue **80 °C**; si no, el valor real. Serial y MQTT siguen con la telemetría cruda.
 2. **Litros:** `litros = dispensed_ms / 120000`; tope = `duration_ms / 120000`. Railway ya publica `DISPENSE_DURATION_MS=120000` (1 L).
 3. **Oferta en Paga con QR:** `product_description` y `price_display` vienen de `POST /orders/create`. Fallback local: `Recarga de 1 litro` / `$500`.
 4. **Retiro de termo en carga:** misma pausa UART que **Parar** → **COLOCA EL TERMO**; al reponer, UI pausa; hay que tocar **Continuar**. Timer X (`pause_timeout_ms` MQTT, fallback 20 s) corre en Coloca termo y en pausa.
@@ -66,6 +66,6 @@ Abrir: `mate_point_v0-9/mate_point_v0-9.ino`
 | USB CDC On Boot | **Disabled** |
 | UART0 | GPIO44/43 @ 9600 — solo Nobana |
 
-Captura Test1 objetivo: `tools/nobana_uart_sniffer/capturas/2026-XX-XX-Waveshare-Mate_point-v0-9_Test1.md`
+Cierre banco: [`PLAN-MATE-POINT-v0-9.md`](../PLAN-MATE-POINT-v0-9.md) §10 (2026-09-17). Sin captura UART sniffer.
 
 Provisioning Wi-Fi: ver [`mate_point_v0-6/README.md`](../mate_point_v0-6/README.md).

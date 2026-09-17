@@ -1,0 +1,25 @@
+{
+  "store_external_id": "MATEPOINT",
+  "devices": [
+    {
+      "device_id": "MATEPOINT001",
+      "external_pos_id": "MATEPOINT001POS001",
+      "name": "Mate point - Dispensador 1"
+    },
+    {
+      "device_id": "MATEPOINT002",
+      "external_pos_id": "MATEPOINT002POS001",
+      "name": "Mate point - Dispensador 2"
+    },
+    {
+      "device_id": "MATEPOINT003",
+      "external_pos_id": "MATEPOINT003POS001",
+      "name": "Mate point - Dispensador 3"
+    },
+    {
+      "device_id": "MATEPOINT004",
+      "external_pos_id": "MATEPOINT004POS001",
+      "name": "Mate point - Dispensador 4"
+    }
+  ]
+}

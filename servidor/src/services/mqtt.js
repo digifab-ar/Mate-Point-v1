@@ -7,9 +7,12 @@ function getMqttStatus() {
   return status;
 }
 
-function commandTopic() {
-  const deviceId = process.env.MQTT_DEVICE_ID || 'MATEPOINT001';
-  return `mate/${deviceId}/command`;
+function commandTopic(deviceId) {
+  const id = (deviceId || '').toString().trim();
+  if (!id) {
+    throw new Error('deviceId requerido para el topic MQTT');
+  }
+  return `mate/${id}/command`;
 }
 
 function connectMqtt() {
@@ -53,23 +56,30 @@ function connectMqtt() {
 }
 
 function publishDispense(payload = {}) {
+  const deviceId = (payload.device_id || '').toString().trim();
+  if (!deviceId) {
+    return Promise.reject(new Error('device_id requerido para publicar dispense'));
+  }
+
   const durationMs = Number(process.env.DISPENSE_DURATION_MS || 120000);
   const pauseTimeoutMs = Number(process.env.PAUSE_TIMEOUT_MS || 20000);
+  const topic = commandTopic(deviceId);
   const message = {
     cmd: 'dispense',
     duration_ms: durationMs,
     pause_timeout_ms: pauseTimeoutMs,
     ts: Date.now(),
     ...payload,
+    device_id: deviceId,
   };
 
   return new Promise((resolve, reject) => {
     if (!client || status !== 'connected') {
       return reject(new Error(`MQTT no conectado (status: ${status})`));
     }
-    client.publish(commandTopic(), JSON.stringify(message), { qos: 1 }, (err) => {
+    client.publish(topic, JSON.stringify(message), { qos: 1 }, (err) => {
       if (err) return reject(err);
-      console.log(JSON.stringify({ event: 'mqtt_published', topic: commandTopic(), message }));
+      console.log(JSON.stringify({ event: 'mqtt_published', topic, message }));
       resolve(message);
     });
   });

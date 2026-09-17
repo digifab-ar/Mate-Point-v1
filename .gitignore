@@ -17,3 +17,6 @@ servidor/.env
 # Build
 dist/
 coverage/
+
+# Alta MP v0-8 (PNG QR + IDs de sucursal/caja)
+servidor/ops/

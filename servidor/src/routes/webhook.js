@@ -81,6 +81,8 @@ router.post('/mp', async (req, res) => {
 
     logEvent('dispense_triggered', {
       order_id: orderId,
+      device_id: validation.device_id,
+      external_pos_id: validation.external_pos_id,
       external_reference: externalReference,
       amount: order.total_paid_amount,
     });
@@ -89,9 +91,15 @@ router.post('/mp', async (req, res) => {
       await publishDispense({
         order_id: orderId,
         external_reference: externalReference,
+        device_id: validation.device_id,
       });
       markDispensed(orderId);
-      return res.status(200).json({ ok: true, dispensed: true, order_id: orderId });
+      return res.status(200).json({
+        ok: true,
+        dispensed: true,
+        order_id: orderId,
+        device_id: validation.device_id,
+      });
     } catch (mqttErr) {
       logEvent('mqtt_failed', { order_id: orderId, message: mqttErr.message });
       return res.status(200).json({ ok: true, dispensed: false, reason: 'mqtt_failed' });

@@ -1,16 +1,17 @@
 # Plan de implementación — Mate Point v0-8
 
 **Proyecto:** Mate Point — OT-00268 Etapa 3  
-**Carpeta firmware:** [`mate_point_v0-8/`](mate_point_v0-8/) — fork de [`mate_point_v0-7/`](mate_point_v0-7/) *(carpeta aún no creada)*  
-**Base validada:** v0-7 (VL6180 — OK hardware 2026-09-08) · v0-6 Wi-Fi NVS · servidor Fase 3 + órdenes v0.2  
+**Carpeta firmware:** [`mate_point_v0-8/`](mate_point_v0-8/) — fork de [`mate_point_v0-9/`](mate_point_v0-9/)  
+**Base validada:** v0-9 (oferta / litros / retiro termo — E2E OK hardware 2026-09-17) · v0-7 VL6180 · v0-6 Wi-Fi NVS · servidor Fase 3 + órdenes v0.2  
 **Plataforma:** Waveshare ESP32-S3-Touch-LCD-7B + Nobana UART + MQTT + QR estático MP  
-**Última actualización:** 2026-09-02  
-**Estado:** **Plan** — sin código implementado
+**Última actualización:** 2026-09-17  
+**Estado:** **Implementado** (código) — pendiente alta MP sandbox (4 cajas) + PNG LVGL por unidad + Railway + QA E2E
 
 | Documento | Uso |
 |-----------|-----|
-| [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) | Producto actual — `DEVICE_ID` fijo en `config.h`, Wi-Fi en NVS |
-| [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) | VL6180 — **cerrado** 2026-09-08; base firmware de v0-8 |
+| [`PLAN-MATE-POINT-v0-9.md`](PLAN-MATE-POINT-v0-9.md) | **Producto vigente** — oferta servidor, litros, `WAIT_TERMO_RESUME` |
+| [`PLAN-MATE-POINT-v0-6.md`](PLAN-MATE-POINT-v0-6.md) | `DEVICE_ID` fijo en `config.h`, Wi-Fi en NVS |
+| [`PLAN-MATE-POINT-v0-7.md`](PLAN-MATE-POINT-v0-7.md) | VL6180 — **cerrado** 2026-09-08 |
 | [`integracion-mercadopago-qr.md`](../integracion-mercadopago-qr.md) | QR estático, sucursal/caja, webhook (POC DigiFAB) |
 | [`servidor-mate-point.md`](../servidor-mate-point.md) | Backend Railway, MQTT, `POST /orders/create` |
 | [`arquitectura-mate-point.md`](../arquitectura-mate-point.md) | Topics `mate/{device_id}/command` · `status` |
@@ -62,7 +63,7 @@ v0-8 cierra ese ruteo y documenta el alta operativa en la cuenta del cliente.
 | D14 | Domicilio de la sucursal única | Dirección **fiscal / sede** del cliente (CUIT). No es la dirección de cada kiosco. MP usa ese dato para impuestos y mapa; es el trade-off de D1 |
 | D15 | `fixed_amount` | **`true`** — igual que el POS POC |
 | D16 | Categoría POS | **`621102`** (gastronomía) — igual POC; cambiar solo si el rubro del cliente lo exige |
-| D17 | Base firmware | Fork **v0-7** (VL6180 OK hardware). MQTT/QR/servidor de v0-8 no dependen del ToF |
+| D17 | Base firmware | Fork **v0-9** (producto vigente, E2E OK 2026-09-17). MQTT/QR/servidor de v0-8 no dependen del ToF. Plan original (2026-09-02) decía v0-7; v0-9 se intercaló y quedó cerrado primero |
 | D18 | `MQTT_CLIENT_ID` | Sufijo **`v080`** |
 | D19 | Persistencia registro dispositivos | Archivo/config en servidor (JSON o módulo). **Sin** PostgreSQL en v0-8 |
 | D20 | OAuth | **No** en v0-8. Integración propia del cliente: Access Token de **su** app (prueba, luego producción) |
@@ -87,7 +88,8 @@ Cuenta MP del cliente
         └── Sucursal MATEPOINT        ← 1 (D1)
               ├── Caja MATEPOINT001POS001  ↔  device MATEPOINT001  ↔  QR PNG 1
               ├── Caja MATEPOINT002POS001  ↔  device MATEPOINT002  ↔  QR PNG 2
-              └── Caja MATEPOINT00nPOS001  ↔  device MATEPOINT00n  ↔  QR PNG n
+              ├── Caja MATEPOINT003POS001  ↔  device MATEPOINT003  ↔  QR PNG 3
+              └── Caja MATEPOINT004POS001  ↔  device MATEPOINT004  ↔  QR PNG 4
 ```
 
 No reutilizar un QR entre dos máquinas: Mercado Pago mantiene **una orden abierta por POS**. Dos equipos con el mismo POS se pisan.
@@ -280,9 +282,20 @@ Máquinas
 
 ## 6. Paso a paso — sucursal y cajas (cuenta del cliente)
 
-Hacerlo con el **Access Token de prueba** del cliente y su `MP_USER_ID` de prueba. Mismos requests que [`integracion-mercadopago-qr.md`](../integracion-mercadopago-qr.md) §5.1–§5.2, con IDs **nuevos**.
+Hacerlo con el **Access Token de prueba** DigiFAB y `MP_USER_ID=3420512522`. Script idempotente:
 
-Herramientas: Postman o `curl`. Header siempre:
+```bash
+cd servidor
+# token en .env (gitignored), no en el chat
+npm run provision:mp-v08 -- --dry-run
+npm run provision:mp-v08
+```
+
+Crea sucursal `MATEPOINT` (Santamarina 1352, San Fernando) y las 4 cajas del registro [`servidor/src/config/devices.json`](../servidor/src/config/devices.json). PNGs → `servidor/ops/mp-v08/` (gitignored).
+
+Mismos requests que [`integracion-mercadopago-qr.md`](../integracion-mercadopago-qr.md) §5.1–§5.2, con IDs **nuevos**. El store/POS POC (`MATEPOINT001` / `77230109`) **no** se reutiliza (opción B).
+
+Herramientas: el script, o Postman / `curl`. Header siempre:
 
 ```http
 Authorization: Bearer <MP_ACCESS_TOKEN>
@@ -309,13 +322,13 @@ Sustituir domicilio por el **fiscal del cliente**. `city_name` debe ser un valor
   "name": "Mate point",
   "external_id": "MATEPOINT",
   "location": {
-    "street_number": "NNN",
-    "street_name": "Calle",
-    "city_name": "<lista MP>",
+    "street_number": "1352",
+    "street_name": "Santamarina",
+    "city_name": "San Fernando",
     "state_name": "Buenos Aires",
-    "latitude": -34.0,
-    "longitude": -58.0,
-    "reference": "Sede Mate Point — sucursal única flota"
+    "latitude": -34.4568,
+    "longitude": -58.5612,
+    "reference": "Santamarina 1352 — sucursal única flota"
   },
   "business_hours": {
     "monday": [{"open": "08:00", "close": "22:00"}],
@@ -357,7 +370,9 @@ No crear una segunda sucursal por kiosco (D1).
 }
 ```
 
-**Máquina 2** — igual, con `"name": "Mate point - Dispensador 2"` y `"external_id": "MATEPOINT002POS001"`.
+**Máquina 2** — `"name": "Mate point - Dispensador 2"`, `"external_id": "MATEPOINT002POS001"`.  
+**Máquina 3** — Dispensador 3 / `MATEPOINT003POS001`.  
+**Máquina 4** — Dispensador 4 / `MATEPOINT004POS001`.
 
 `store_id: 0` es placeholder: poner el `id` numérico real de §6.2.
 
@@ -400,7 +415,7 @@ El QR **no cambia** entre ventas. Si se da de baja la caja y se crea otra, hay q
 ```bash
 # sucursales
 curl -H "Authorization: Bearer $MP_ACCESS_TOKEN" \
-  "https://api.mercadopago.com/users/$MP_USER_ID/stores"
+  "https://api.mercadopago.com/users/$MP_USER_ID/stores/search?external_id=MATEPOINT"
 
 # cajas (filtrar a mano por external_store_id MATEPOINT)
 curl -H "Authorization: Bearer $MP_ACCESS_TOKEN" \
@@ -411,8 +426,8 @@ Esperado: 1 store `MATEPOINT`, N POS `MATEPOINT00nPOS001`, todos `active`.
 
 ### 6.6 Alta de una máquina extra (operación repetible)
 
-1. Asignar próximo `device_id` (`MATEPOINT003`, …).
-2. `POST /pos` con `external_id` `MATEPOINT003POS001` y la **misma** sucursal.
+1. Asignar próximo `device_id` (`MATEPOINT005`, …).
+2. `POST /pos` con `external_id` `MATEPOINT005POS001` y la **misma** sucursal.
 3. Descargar PNG.
 4. Agregar fila al registro del servidor.
 5. Flashear firmware con ese `DEVICE_ID` y ese PNG.
@@ -422,7 +437,11 @@ Esperado: 1 store `MATEPOINT`, N POS `MATEPOINT00nPOS001`, todos `active`.
 
 ## 7. Servidor — ruteo por dispositivo
 
-Contrato objetivo (implementación posterior; este plan no modifica código).
+Implementado en `servidor/` (2026-09-17). Sandbox DigiFAB: opción B, 4 máquinas, Santamarina 1352 / San Fernando, precio/copy igual v0-9. Railway lo carga ops.
+
+Registro: [`src/config/devices.json`](../servidor/src/config/devices.json). `POST /orders/create` exige `device_id` de esa lista (400 si falta o es desconocido). Webhook: POS ∈ registro → `mate/{device_id}/command`.
+
+Contrato objetivo (cerrado en código):
 
 ### 7.1 Registro
 
@@ -437,6 +456,14 @@ Contrato objetivo (implementación posterior; este plan no modifica código).
     {
       "device_id": "MATEPOINT002",
       "external_pos_id": "MATEPOINT002POS001"
+    },
+    {
+      "device_id": "MATEPOINT003",
+      "external_pos_id": "MATEPOINT003POS001"
+    },
+    {
+      "device_id": "MATEPOINT004",
+      "external_pos_id": "MATEPOINT004POS001"
     }
   ]
 }
@@ -497,14 +524,14 @@ Checklist flash:
 |----|------|-------|----------|
 | T1 | Cliente | Cuenta MP + app QR + compartir credenciales (§4) | DigiFAB entra a la app / tiene token de prueba |
 | T2 | Ops MP | `GET /users/me` + sucursal `MATEPOINT` (§6.1–6.2) | `store_id` anotado |
-| T3 | Ops MP | Caja 1 + caja 2 + PNG (§6.3–6.4) | Dos `external_id` distintos, QR escaneables |
+| T3 | Ops MP | Cajas 1–4 + PNG (§6.3–6.4) | Cuatro `external_id` distintos, QR escaneables |
 | T4 | Ops MP | Webhook prueba + `MP_WEBHOOK_SECRET` (§4.5) | POST prueba → 200 |
 | T5 | Servidor | Registro dispositivos + create por POS | Create `MATEPOINT002` no usa POS de 001 |
 | T6 | Servidor | Webhook: POS → topic MQTT | Pago caja 2 → `mate/MATEPOINT002/command` |
 | T7 | Servidor | Validar POS desconocido / device desconocido | Sin MQTT cruzado |
-| T8 | Firmware | Fork `mate_point_v0-8/` · `MQTT_CLIENT_ID` v080 | Compila sobre base v0-6/v0-7 |
-| T9 | Firmware | Unidad 2: `DEVICE_ID` + `qr_static_img.c` | QR en pantalla = PNG caja 2 |
-| T10 | QA | E2E dos máquinas en paralelo | Sin cruce; idempotencia por `order_id` |
+| T8 | Firmware | Fork `mate_point_v0-8/` desde v0-9 · `MQTT_CLIENT_ID` v080 | Compila sobre base v0-9 |
+| T9 | Firmware | Unidades 2–4: `DEVICE_ID` + `qr_static_img.c` | QR en pantalla = PNG de esa caja |
+| T10 | QA | E2E máquinas (mín. 001 vs otra vía Postman/MQTT) | Sin cruce; idempotencia por `order_id` |
 | T11 | Docs | Completar plantilla §5.6 (fuera del git) | Mapa 1:1 cerrado |
 | T12 | Docs | Enlace desde README firmware / plan maestro **al implementar** | Índice actualizado |
 
@@ -515,7 +542,7 @@ Checklist flash:
 | ID | Criterio |
 |----|----------|
 | S1 | Una sola sucursal `external_id=MATEPOINT` en la cuenta del **cliente** |
-| S2 | N ≥ 2 cajas activas bajo esa sucursal, cada una con PNG propio |
+| S2 | N = 4 cajas activas bajo esa sucursal, cada una con PNG propio |
 | S3 | App Developers y tokens son del cliente (compartidos, no copiados de DigiFAB sandbox) |
 | S4 | Railway usa `MP_ACCESS_TOKEN` / `MP_USER_ID` / `MP_WEBHOOK_SECRET` de esa app |
 | S5 | `POST /orders/create` `{ device_id: "MATEPOINT002" }` crea orden con `external_pos_id=MATEPOINT002POS001` |
@@ -577,20 +604,24 @@ Checklist flash:
 | Plantilla entrega + este plan en índice (al implementar) | 0.5 |
 | **Total** | **~3.5–4.5 días** |
 
-No crear `mate_point_v0-8/` hasta implementar; este archivo es solo el plan.
+Sketch: [`mate_point_v0-8/`](mate_point_v0-8/). Servidor: `src/config/devices.json` + create/webhook por POS. Alta MP: `servidor/scripts/provision-mp-v08.js`.
 
 ---
 
-## 14. Estructura objetivo (cuando se implemente)
+## 14. Estructura
 
 ```
 mate_point_firmware/mate_point_v0-8/
 ├── mate_point_v0-8.ino
 ├── config.h                 ← DEVICE_ID por unidad; MQTT_CLIENT_ID v080
-├── qr_static_img.c          ← PNG de ESA caja
-└── … (resto igual a la base v0-6 / v0-7)
+├── qr_static_img.c          ← PNG de ESA caja (reemplazar tras provision)
+└── … (resto igual a v0-9)
 
-servidor/                    ← registro devices; create/webhook rutean por POS
+servidor/
+├── src/config/devices.json  ← 4 device_id ↔ POS
+├── src/services/devices.js
+├── scripts/provision-mp-v08.js
+└── … create/webhook rutean por POS
 ```
 
 ---
@@ -599,4 +630,6 @@ servidor/                    ← registro devices; create/webhook rutean por POS
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-09-17 | **Implementado** — fork v0-9; registro 4 máquinas; create/webhook MQTT por POS; script sucursal `MATEPOINT` + 4 cajas (opción B, Santamarina 1352). Pendiente: correr provision, PNG LVGL, Railway, QA |
+| 2026-09-17 | Base de fork → **v0-9** (producto vigente E2E OK). D17 actualizado |
 | 2026-09-02 | Plan inicial v0-8 — flota N máquinas, **una sucursal `MATEPOINT`**, una caja/QR por `device_id`; cuenta Developers del cliente; guía de datos para Railway |
